@@ -5,6 +5,7 @@ class Product {
   final double price;
   final int stockQuantity;
   final String? imagePath;
+  final String? category;
 
   Product({
     this.id,
@@ -13,6 +14,7 @@ class Product {
     required this.price,
     required this.stockQuantity,
     this.imagePath,
+    this.category,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class Product {
       'price': price,
       'stockQuantity': stockQuantity,
       'imagePath': imagePath,
+      'category': category,
     };
   }
 
@@ -34,6 +37,7 @@ class Product {
       price: map['price'],
       stockQuantity: map['stockQuantity'],
       imagePath: map['imagePath'],
+      category: map['category'],
     );
   }
 
@@ -44,6 +48,7 @@ class Product {
     double? price,
     int? stockQuantity,
     String? imagePath,
+    String? category,
   }) {
     return Product(
       id: id ?? this.id,
@@ -52,6 +57,7 @@ class Product {
       price: price ?? this.price,
       stockQuantity: stockQuantity ?? this.stockQuantity,
       imagePath: imagePath ?? this.imagePath,
+      category: category ?? this.category,
     );
   }
 }

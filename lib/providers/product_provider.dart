@@ -6,8 +6,33 @@ class ProductProvider with ChangeNotifier {
   List<Product> _products = [];
   bool _isLoading = false;
   final int lowStockThreshold = 5; // Default threshold
+  String _selectedCategory = 'Todos';
 
-  List<Product> get products => [..._products];
+  final List<String> categories = [
+    'Todos',
+    'Narguile',
+    'Essências',
+    'Carvão',
+    'Isqueiros',
+    'Charutos',
+    'Juices',
+    'Vapes',
+    'Acessórios',
+    'Outros'
+  ];
+
+  List<Product> get products {
+    if (_selectedCategory == 'Todos') return [..._products];
+    return _products.where((p) => p.category == _selectedCategory).toList();
+  }
+
+  String get selectedCategory => _selectedCategory;
+
+  void setCategory(String category) {
+    _selectedCategory = category;
+    notifyListeners();
+  }
+
   bool get isLoading => _isLoading;
   
   List<Product> get lowStockProducts => _products.where((p) => p.stockQuantity <= lowStockThreshold).toList();

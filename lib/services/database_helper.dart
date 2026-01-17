@@ -35,7 +35,8 @@ class DatabaseHelper {
         barcode TEXT,
         price REAL NOT NULL,
         stockQuantity INTEGER NOT NULL,
-        imagePath TEXT
+        imagePath TEXT,
+        category TEXT
       )
     ''');
 

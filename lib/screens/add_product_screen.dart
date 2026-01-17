@@ -19,6 +19,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _barcodeController = TextEditingController();
   final _priceController = TextEditingController();
   final _stockController = TextEditingController();
+  String? _selectedCategory;
   
   File? _image;
   final _picker = ImagePicker();
@@ -55,6 +56,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         price: double.parse(_priceController.text),
         stockQuantity: int.parse(_stockController.text),
         imagePath: _image?.path,
+        category: _selectedCategory,
       );
 
       await context.read<ProductProvider>().addProduct(product);
@@ -90,6 +92,29 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
+              ),
+              const SizedBox(height: 16),
+              Consumer<ProductProvider>(
+                builder: (context, provider, _) {
+                  return DropdownButtonFormField<String>(
+                    value: _selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'Categoria',
+                      prefixIcon: Icon(Icons.category_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: provider.categories
+                        .where((cat) => cat != 'Todos')
+                        .map((cat) => DropdownMenuItem(
+                              value: cat,
+                              child: Text(cat),
+                            ))
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedCategory = val),
+                    validator: (value) =>
+                        value == null ? 'Selecione uma categoria' : null,
+                  );
+                },
               ),
               const SizedBox(height: 16),
               Row(

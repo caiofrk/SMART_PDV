@@ -32,29 +32,66 @@ class _InventoryScreenState extends State<InventoryScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (provider.products.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey.shade300),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Nenhum produto cadastrado',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 18),
-                  ),
-                ],
+          return Column(
+            children: [
+              _buildCategoryFilters(provider),
+              Expanded(
+                child: provider.products.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.inventory_2_outlined,
+                                size: 80, color: Colors.grey.shade300),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Nenhum produto nesta categoria',
+                              style: TextStyle(
+                                  color: Colors.grey.shade500, fontSize: 18),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: provider.products.length,
+                        itemBuilder: (context, index) {
+                          final product = provider.products[index];
+                          return _buildProductCard(product);
+                        },
+                      ),
               ),
-            );
-          }
+            ],
+          );
+        },
+      ),
+    );
+  }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: provider.products.length,
-            itemBuilder: (context, index) {
-              final product = provider.products[index];
-              return _buildProductCard(product);
-            },
+  Widget _buildCategoryFilters(ProductProvider provider) {
+    return Container(
+      height: 60,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: provider.categories.length,
+        itemBuilder: (context, index) {
+          final category = provider.categories[index];
+          final isSelected = provider.selectedCategory == category;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(category),
+              selected: isSelected,
+              onSelected: (_) => provider.setCategory(category),
+              selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              checkmarkColor: Theme.of(context).colorScheme.primary,
+              labelStyle: TextStyle(
+                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
           );
         },
       ),
@@ -90,6 +127,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (product.category != null)
+              Container(
+                margin: const EdgeInsets.only(top: 4, bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.brown.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  product.category!,
+                  style: TextStyle(fontSize: 10, color: Colors.brown.shade700),
+                ),
+              ),
             Text('Código: ${product.barcode ?? "N/A"}'),
             Text(
               'Estoque: ${product.stockQuantity}',
