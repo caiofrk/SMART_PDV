@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/product.dart';
 import '../models/sale.dart';
+import '../models/user.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -57,6 +58,21 @@ class DatabaseHelper {
         FOREIGN KEY (productId) REFERENCES products (id)
       )
     ''');
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL
+      )
+    ''');
+
+    // Create a default admin user
+    await db.insert('users', {
+      'username': 'admin',
+      'password': 'admin', // In production, hash this!
+      'role': 'admin'
+    });
   }
 
   // Product methods
@@ -144,6 +160,26 @@ class DatabaseHelper {
       sales.add(Sale.fromMap(row, items: items));
     }
     return sales;
+  }
+
+  // User methods
+  Future<User?> login(String username, String password) async {
+    final db = await instance.database;
+    final maps = await db.query(
+      'users',
+      where: 'username = ? AND password = ?',
+      whereArgs: [username, password],
+    );
+
+    if (maps.isNotEmpty) {
+      return User.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<int> registerUser(User user) async {
+    final db = await instance.database;
+    return await db.insert('users', user.toMap());
   }
 
   Future close() async {

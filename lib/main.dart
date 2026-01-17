@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import './providers/product_provider.dart';
 import './providers/sales_provider.dart';
+import './providers/auth_provider.dart';
 import './screens/home_screen.dart';
+import './screens/login_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +21,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => SalesProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: MaterialApp(
         title: 'JL Tabacaria PDV',
@@ -56,7 +59,14 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const HomeScreen(),
+        home: Consumer<AuthProvider>(
+          builder: (context, auth, _) {
+            if (auth.isAuthenticated) {
+              return const HomeScreen();
+            }
+            return const LoginScreen();
+          },
+        ),
       ),
     );
   }

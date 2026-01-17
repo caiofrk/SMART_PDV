@@ -6,6 +6,7 @@ import 'sales_screen.dart';
 import 'reports_screen.dart';
 import '../widgets/low_stock_alert.dart';
 import '../providers/product_provider.dart';
+import '../providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,6 +34,12 @@ class _HomeScreenState extends State<HomeScreen> {
           'JL TABACARIA',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, letterSpacing: 1.2),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.read<AuthProvider>().logout(),
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
