@@ -77,7 +77,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
           Text(
-            'R$ ${total.toStringAsFixed(2)}',
+            'R\$ ${total.toStringAsFixed(2)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -106,7 +106,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              'R$ ${sale.totalAmount.toStringAsFixed(2)}',
+              'R\$ ${sale.totalAmount.toStringAsFixed(2)}',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const Icon(Icons.expand_more, size: 20),
@@ -124,7 +124,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('${item.quantity}x ${item.productName}'),
-                          Text('R$ ${(item.priceAtSale * item.quantity).toStringAsFixed(2)}'),
+                          Text('R\$ ${(item.priceAtSale * item.quantity).toStringAsFixed(2)}'),
                         ],
                       ),
                     )),

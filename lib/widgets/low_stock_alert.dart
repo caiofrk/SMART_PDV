@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
-import 'inventory_screen.dart';
+import '../screens/inventory_screen.dart';
 
 class LowStockAlert extends StatelessWidget {
   const LowStockAlert({super.key});

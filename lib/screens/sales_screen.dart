@@ -89,9 +89,9 @@ class _SalesScreenState extends State<SalesScreen> {
                       final item = _cart[index];
                       return ListTile(
                         title: Text(item.product.name),
-                        subtitle: Text('R$ ${item.product.price} x ${item.quantity}'),
+                        subtitle: Text('R\$ ${item.product.price} x ${item.quantity}'),
                         trailing: Text(
-                          'R$ ${(item.product.price * item.quantity).toStringAsFixed(2)}',
+                          'R\$ ${(item.product.price * item.quantity).toStringAsFixed(2)}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       );
@@ -113,7 +113,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   children: [
                     const Text('TOTAL', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     Text(
-                      'R$ ${_total.toStringAsFixed(2)}',
+                      'R\$ ${_total.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

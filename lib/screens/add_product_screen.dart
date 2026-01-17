@@ -145,7 +145,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       controller: _priceController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Preço (R$)',
+                        labelText: 'Preço (R\$)',
                         prefixIcon: Icon(Icons.attach_money),
                         border: OutlineInputBorder(),
                       ),

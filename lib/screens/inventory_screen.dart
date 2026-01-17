@@ -151,7 +151,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ],
         ),
         trailing: Text(
-          'R$ ${product.price.toStringAsFixed(2)}',
+          'R\$ ${product.price.toStringAsFixed(2)}',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
