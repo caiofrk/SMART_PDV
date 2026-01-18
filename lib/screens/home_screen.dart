@@ -7,6 +7,7 @@ import 'reports_screen.dart';
 import '../widgets/low_stock_alert.dart';
 import '../providers/product_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/backup_service.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -34,12 +35,42 @@ class _HomeScreenState extends State<HomeScreen> {
           'JL TABACARIA',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, letterSpacing: 1.2),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => context.read<AuthProvider>().logout(),
-          ),
-        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            UserAccountsDrawerHeader(
+              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
+              accountName: Text(
+                'JL Tabacaria',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              accountEmail: const Text('Administrador'),
+              currentAccountPicture: const CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.store, color: Color(0xFF6D4C41)),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.backup),
+              title: const Text('Exportar Backup (Drive/Local)'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                BackupService.exportDatabase(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Sair', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<AuthProvider>().logout();
+              },
+            ),
+          ],
+        ),
       ),
       body: Container(
         decoration: BoxDecoration(
