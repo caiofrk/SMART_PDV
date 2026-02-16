@@ -29,7 +29,9 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF8D6E63), // Lighter tobacco for dark theme
+            seedColor: const Color(
+              0xFF8D6E63,
+            ), // Lighter tobacco for dark theme
             primary: const Color(0xFFD7CCC8), // Light beige for text/accents
             secondary: const Color(0xFFFFB300), // Vibrant Amber
             surface: const Color(0xFF121212),
@@ -37,10 +39,11 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
           ),
           scaffoldBackgroundColor: const Color(0xFF121212),
-          textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).copyWith(
-            bodyLarge: const TextStyle(color: Color(0xFFE0E0E0)),
-            bodyMedium: const TextStyle(color: Color(0xFFE0E0E0)),
-          ),
+          textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme)
+              .copyWith(
+                bodyLarge: const TextStyle(color: Color(0xFFE0E0E0)),
+                bodyMedium: const TextStyle(color: Color(0xFFE0E0E0)),
+              ),
           appBarTheme: const AppBarTheme(
             backgroundColor: Color(0xFF1E1E1E),
             foregroundColor: Color(0xFFD7CCC8),
@@ -67,6 +70,11 @@ class MyApp extends StatelessWidget {
         ),
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
+            if (auth.isLoading) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
             if (auth.isAuthenticated) {
               return const HomeScreen();
             }

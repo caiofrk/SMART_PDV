@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/product.dart';
@@ -25,11 +27,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
+    return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
   Future _createDB(Database db, int version) async {
@@ -76,9 +74,14 @@ class DatabaseHelper {
     // Create a default admin user
     await db.insert('users', {
       'username': 'admin',
-      'password': 'admin', // In production, hash this!
-      'role': 'admin'
+      'password': hashPassword('admin'),
+      'role': 'admin',
     });
+  }
+
+  String hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    return sha256.convert(bytes).toString();
   }
 
   // Product methods
@@ -120,11 +123,7 @@ class DatabaseHelper {
 
   Future<int> deleteProduct(int id) async {
     final db = await instance.database;
-    return await db.delete(
-      'products',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('products', where: 'id = ?', whereArgs: [id]);
   }
 
   // Sales methods
@@ -137,7 +136,7 @@ class DatabaseHelper {
       // 2. Insert Sale Items and update stock
       for (var item in sale.items) {
         await txn.insert('sale_items', item.toMap(saleId));
-        
+
         // Update product stock
         await txn.execute(
           'UPDATE products SET stockQuantity = stockQuantity - ? WHERE id = ?',
@@ -151,17 +150,20 @@ class DatabaseHelper {
   Future<List<Sale>> getSalesHistory() async {
     final db = await instance.database;
     final result = await db.query('sales', orderBy: 'timestamp DESC');
-    
+
     List<Sale> sales = [];
     for (var row in result) {
       final saleId = row['id'] as int;
-      final itemsResult = await db.rawQuery('''
+      final itemsResult = await db.rawQuery(
+        '''
         SELECT si.*, p.name as productName 
         FROM sale_items si
         JOIN products p ON si.productId = p.id
         WHERE si.saleId = ?
-      ''', [saleId]);
-      
+      ''',
+        [saleId],
+      );
+
       final items = itemsResult.map((i) => SaleItem.fromMap(i)).toList();
       sales.add(Sale.fromMap(row, items: items));
     }
@@ -171,11 +173,27 @@ class DatabaseHelper {
   // User methods
   Future<User?> login(String username, String password) async {
     final db = await instance.database;
+    final hashedPassword = hashPassword(password);
+
     final maps = await db.query(
       'users',
-      where: 'username = ? AND password = ?',
-      whereArgs: [username, password],
+      where: 'username = ? AND (password = ? OR password = ?)',
+      whereArgs: [
+        username,
+        hashedPassword,
+        password,
+      ], // Legacy support for plain text admin until re-registered
     );
+
+    if (maps.isNotEmpty) {
+      return User.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<User?> getUserById(int id) async {
+    final db = await instance.database;
+    final maps = await db.query('users', where: 'id = ?', whereArgs: [id]);
 
     if (maps.isNotEmpty) {
       return User.fromMap(maps.first);
@@ -185,7 +203,23 @@ class DatabaseHelper {
 
   Future<int> registerUser(User user) async {
     final db = await instance.database;
-    return await db.insert('users', user.toMap());
+    final newUser = User(
+      username: user.username,
+      password: hashPassword(user.password),
+      role: user.role,
+    );
+    return await db.insert('users', newUser.toMap());
+  }
+
+  Future<int> updateUserPassword(int userId, String newPassword) async {
+    final db = await instance.database;
+    final hashedPassword = hashPassword(newPassword);
+    return await db.update(
+      'users',
+      {'password': hashedPassword},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
   }
 
   Future close() async {

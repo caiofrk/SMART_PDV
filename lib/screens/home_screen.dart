@@ -4,6 +4,7 @@ import 'inventory_screen.dart';
 import 'add_product_screen.dart';
 import 'sales_screen.dart';
 import 'reports_screen.dart';
+import 'change_password_screen.dart';
 import '../widgets/low_stock_alert.dart';
 import '../providers/product_provider.dart';
 import '../providers/auth_provider.dart';
@@ -39,45 +40,68 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              accountName: Text(
-                'JL Tabacaria',
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+      drawer: Consumer<AuthProvider>(
+        builder: (context, auth, _) => Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              UserAccountsDrawerHeader(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                accountName: Text(
+                  auth.currentUser?.username.toUpperCase() ?? 'CONVIDADO',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                accountEmail: Text(
+                  auth.currentUser?.role == 'admin'
+                      ? 'Administrador'
+                      : 'Funcionário',
+                ),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.person,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
-              accountEmail: const Text('Administrador'),
-              currentAccountPicture: const CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(Icons.store, color: Color(0xFF6D4C41)),
+              ListTile(
+                leading: const Icon(Icons.password),
+                title: const Text('Alterar Senha'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ChangePasswordScreen(),
+                    ),
+                  );
+                },
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.backup),
-              title: const Text('Exportar Backup (Drive/Local)'),
-              onTap: () {
-                Navigator.pop(context); // Close drawer
-                BackupService.exportDatabase(context);
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Sair', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                context.read<AuthProvider>().logout();
-              },
-            ),
-          ],
+              if (auth.currentUser?.role == 'admin')
+                ListTile(
+                  leading: const Icon(Icons.backup),
+                  title: const Text('Exportar Backup (Drive/Local)'),
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer
+                    BackupService.exportDatabase(context);
+                  },
+                ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text('Sair', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  auth.logout();
+                },
+              ),
+            ],
+          ),
         ),
       ),
       body: Container(
@@ -98,72 +122,111 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeader(context),
               const SizedBox(height: 16),
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  if (!auth.isUsingDefaultPassword)
+                    return const SizedBox.shrink();
+                  return Card(
+                    color: Colors.orange.shade900.withOpacity(0.2),
+                    child: ListTile(
+                      leading: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.orange,
+                      ),
+                      title: const Text(
+                        'Senha Padrão Detectada',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: const Text(
+                        'Por segurança, altere sua senha agora.',
+                      ),
+                      trailing: TextButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ChangePasswordScreen(),
+                          ),
+                        ),
+                        child: const Text('ALTERAR'),
+                      ),
+                    ),
+                  );
+                },
+              ),
               const LowStockAlert(),
               const SizedBox(height: 24),
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  children: [
-                    _buildMenuCard(
-                      context,
-                      'Venda Direta',
-                      Icons.shopping_cart_checkout,
-                      Colors.amber.shade700,
-                      () {
-                        Navigator.push(
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  final isAdmin = auth.currentUser?.role == 'admin';
+                  return Expanded(
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      children: [
+                        _buildMenuCard(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const SalesScreen(),
+                          'Venda Direta',
+                          Icons.shopping_cart_checkout,
+                          Colors.amber.shade700,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SalesScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        if (isAdmin)
+                          _buildMenuCard(
+                            context,
+                            'Estoque',
+                            Icons.inventory_2,
+                            Colors.brown.shade600,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const InventoryScreen(),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
-                    _buildMenuCard(
-                      context,
-                      'Estoque',
-                      Icons.inventory_2,
-                      Colors.brown.shade600,
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const InventoryScreen(),
+                        if (isAdmin)
+                          _buildMenuCard(
+                            context,
+                            'Adicionar Item',
+                            Icons.add_a_photo,
+                            Colors.teal.shade600,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const AddProductScreen(),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
-                    _buildMenuCard(
-                      context,
-                      'Adicionar Item',
-                      Icons.add_a_photo,
-                      Colors.teal.shade600,
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AddProductScreen(),
+                        if (isAdmin)
+                          _buildMenuCard(
+                            context,
+                            'Relatórios',
+                            Icons.bar_chart,
+                            Colors.blueGrey.shade600,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ReportsScreen(),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
+                      ],
                     ),
-                    _buildMenuCard(
-                      context,
-                      'Relatórios',
-                      Icons.bar_chart,
-                      Colors.blueGrey.shade600,
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ReportsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
