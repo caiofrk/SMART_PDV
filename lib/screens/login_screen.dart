@@ -37,21 +37,25 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF6D4C41),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.store, size: 80, color: Colors.white),
+              Icon(
+                Icons.store,
+                size: 80,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 16),
               Text(
                 'JL TABACARIA',
                 style: GoogleFonts.outfit(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.primary,
                   letterSpacing: 1.5,
                 ),
               ),
@@ -126,9 +130,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Acesso restrito a funcionários',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.7),
+                ),
               ),
             ],
           ),

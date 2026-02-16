@@ -23,9 +23,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meu Estoque'),
-      ),
+      appBar: AppBar(title: const Text('Meu Estoque')),
       body: Consumer<ProductProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
@@ -41,13 +39,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.inventory_2_outlined,
-                                size: 80, color: Colors.grey.shade300),
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 80,
+                              color: Colors.grey.shade300,
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               'Nenhum produto nesta categoria',
                               style: TextStyle(
-                                  color: Colors.grey.shade500, fontSize: 18),
+                                color: Colors.grey.shade500,
+                                fontSize: 18,
+                              ),
                             ),
                           ],
                         ),
@@ -85,10 +88,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
               label: Text(category),
               selected: isSelected,
               onSelected: (_) => provider.setCategory(category),
-              selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              selectedColor: Theme.of(
+                context,
+              ).colorScheme.primary.withOpacity(0.2),
               checkmarkColor: Theme.of(context).colorScheme.primary,
               labelStyle: TextStyle(
-                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.black87,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -107,7 +114,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+            color: Theme.of(
+              context,
+            ).colorScheme.surfaceVariant.withOpacity(0.5),
             borderRadius: BorderRadius.circular(8),
           ),
           child: product.imagePath != null && product.imagePath!.isNotEmpty
@@ -132,19 +141,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 margin: const EdgeInsets.only(top: 4, bottom: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.brown.shade50,
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   product.category!,
-                  style: TextStyle(fontSize: 10, color: Colors.brown.shade700),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
             Text('Código: ${product.barcode ?? "N/A"}'),
             Text(
               'Estoque: ${product.stockQuantity}',
               style: TextStyle(
-                color: product.stockQuantity < 5 ? Colors.red : Colors.green.shade700,
+                color: product.stockQuantity < 5
+                    ? Colors.redAccent
+                    : Colors.greenAccent,
                 fontWeight: FontWeight.w600,
               ),
             ),

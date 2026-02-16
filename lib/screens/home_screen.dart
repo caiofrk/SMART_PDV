@@ -22,8 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     // Load products on home to check for low stock alerts
-    Future.microtask(() => 
-      context.read<ProductProvider>().fetchAndSetProducts()
+    Future.microtask(
+      () => context.read<ProductProvider>().fetchAndSetProducts(),
     );
   }
 
@@ -33,7 +33,10 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(
           'JL TABACARIA',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
         ),
       ),
       drawer: Drawer(
@@ -41,10 +44,15 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+              ),
               accountName: Text(
                 'JL Tabacaria',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
               accountEmail: const Text('Administrador'),
               currentAccountPicture: const CircleAvatar(
@@ -79,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
             end: Alignment.bottomCenter,
             colors: [
               Theme.of(context).colorScheme.primary.withOpacity(0.05),
-              Colors.white,
+              Theme.of(context).colorScheme.surface,
             ],
           ),
         ),
@@ -106,7 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const SalesScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const SalesScreen(),
+                          ),
                         );
                       },
                     ),
@@ -118,7 +128,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const InventoryScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const InventoryScreen(),
+                          ),
                         );
                       },
                     ),
@@ -130,7 +142,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const AddProductScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const AddProductScreen(),
+                          ),
                         );
                       },
                     ),
@@ -142,7 +156,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const ReportsScreen(),
+                          ),
                         );
                       },
                     ),
@@ -159,10 +175,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHeader(BuildContext context) {
     return Column(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 40,
-          backgroundColor: Color(0xFF6D4C41),
-          child: Icon(Icons.store, size: 40, color: Colors.white),
+          backgroundColor: Theme.of(
+            context,
+          ).colorScheme.primary.withOpacity(0.2),
+          child: Icon(
+            Icons.store,
+            size: 40,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
         const SizedBox(height: 16),
         Text(
@@ -170,14 +192,14 @@ class _HomeScreenState extends State<HomeScreen> {
           style: GoogleFonts.outfit(
             fontSize: 24,
             fontWeight: FontWeight.w600,
-            color: Colors.brown.shade900,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         Text(
           'Gerencie sua tabacaria com facilidade',
           style: GoogleFonts.outfit(
             fontSize: 14,
-            color: Colors.brown.shade400,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
       ],
@@ -198,9 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: color, width: 4),
-            ),
+            border: Border(bottom: BorderSide(color: color, width: 4)),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -213,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: GoogleFonts.outfit(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],

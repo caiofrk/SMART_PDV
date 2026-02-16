@@ -20,7 +20,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _priceController = TextEditingController();
   final _stockController = TextEditingController();
   String? _selectedCategory;
-  
+
   File? _image;
   final _picker = ImagePicker();
 
@@ -36,9 +36,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   void _scanBarcode() async {
     final barcode = await Navigator.push<String>(
       context,
-      MaterialPageRoute(
-        builder: (context) => const BarcodeScannerScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const BarcodeScannerScreen()),
     );
 
     if (barcode != null) {
@@ -52,7 +50,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (_formKey.currentState!.validate()) {
       final product = Product(
         name: _nameController.text,
-        barcode: _barcodeController.text.isEmpty ? null : _barcodeController.text,
+        barcode: _barcodeController.text.isEmpty
+            ? null
+            : _barcodeController.text,
         price: double.parse(_priceController.text),
         stockQuantity: int.parse(_stockController.text),
         imagePath: _image?.path,
@@ -72,9 +72,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Novo Produto'),
-      ),
+      appBar: AppBar(title: const Text('Novo Produto')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -91,7 +89,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   prefixIcon: Icon(Icons.label_outline),
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
+                validator: (value) =>
+                    value!.isEmpty ? 'Campo obrigatório' : null,
               ),
               const SizedBox(height: 16),
               Consumer<ProductProvider>(
@@ -105,10 +104,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                     items: provider.categories
                         .where((cat) => cat != 'Todos')
-                        .map((cat) => DropdownMenuItem(
-                              value: cat,
-                              child: Text(cat),
-                            ))
+                        .map(
+                          (cat) =>
+                              DropdownMenuItem(value: cat, child: Text(cat)),
+                        )
                         .toList(),
                     onChanged: (val) => setState(() => _selectedCategory = val),
                     validator: (value) =>
@@ -149,7 +148,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         prefixIcon: Icon(Icons.attach_money),
                         border: OutlineInputBorder(),
                       ),
-                      validator: (value) => value!.isEmpty ? 'Obrigatório' : null,
+                      validator: (value) =>
+                          value!.isEmpty ? 'Obrigatório' : null,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -162,7 +162,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         prefixIcon: Icon(Icons.inventory),
                         border: OutlineInputBorder(),
                       ),
-                      validator: (value) => value!.isEmpty ? 'Obrigatório' : null,
+                      validator: (value) =>
+                          value!.isEmpty ? 'Obrigatório' : null,
                     ),
                   ),
                 ],
@@ -189,21 +190,32 @@ class _AddProductScreenState extends State<AddProductScreen> {
       child: Container(
         height: 200,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+          ),
         ),
         child: _image != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: Image.file(_image!, fit: BoxFit.cover),
               )
-            : const Column(
+            : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
-                  SizedBox(height: 8),
-                  Text('Tirar foto do produto', style: TextStyle(color: Colors.grey)),
+                  Icon(
+                    Icons.add_a_photo,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tirar foto do produto',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                 ],
               ),
       ),

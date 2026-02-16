@@ -29,28 +29,34 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6D4C41), // Deep brown/tobacco color
-            primary: const Color(0xFF6D4C41),
-            secondary: const Color(0xFFFFA000), // Amber
-            onPrimary: Colors.white,
-            brightness: Brightness.light,
+            seedColor: const Color(0xFF8D6E63), // Lighter tobacco for dark theme
+            primary: const Color(0xFFD7CCC8), // Light beige for text/accents
+            secondary: const Color(0xFFFFB300), // Vibrant Amber
+            surface: const Color(0xFF121212),
+            onSurface: const Color(0xFFE0E0E0),
+            brightness: Brightness.dark,
           ),
-          textTheme: GoogleFonts.outfitTextTheme(),
+          scaffoldBackgroundColor: const Color(0xFF121212),
+          textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).copyWith(
+            bodyLarge: const TextStyle(color: Color(0xFFE0E0E0)),
+            bodyMedium: const TextStyle(color: Color(0xFFE0E0E0)),
+          ),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF6D4C41),
-            foregroundColor: Colors.white,
+            backgroundColor: Color(0xFF1E1E1E),
+            foregroundColor: Color(0xFFD7CCC8),
             elevation: 0,
             centerTitle: true,
           ),
           cardTheme: CardThemeData(
-            elevation: 2,
+            color: const Color(0xFF1E1E1E),
+            elevation: 4,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6D4C41),
+              backgroundColor: const Color(0xFF5D4037),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(

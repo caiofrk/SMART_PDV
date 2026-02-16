@@ -16,17 +16,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => context.read<SalesProvider>().fetchSalesHistory(),
-    );
+    Future.microtask(() => context.read<SalesProvider>().fetchSalesHistory());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Histórico de Vendas'),
-      ),
+      appBar: AppBar(title: const Text('Histórico de Vendas')),
       body: Consumer<SalesProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
@@ -37,7 +33,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
             return const Center(child: Text('Nenhuma venda registrada.'));
           }
 
-          final totalRevenue = provider.salesHistory.fold(0.0, (sum, sale) => sum + sale.totalAmount);
+          final totalRevenue = provider.salesHistory.fold(
+            0.0,
+            (sum, sale) => sum + sale.totalAmount,
+          );
 
           return Column(
             children: [
@@ -118,24 +117,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ...sale.items.map((item) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('${item.quantity}x ${item.productName}'),
-                          Text('R\$ ${(item.priceAtSale * item.quantity).toStringAsFixed(2)}'),
-                        ],
-                      ),
-                    )),
+                ...sale.items.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('${item.quantity}x ${item.productName}'),
+                        Text(
+                          'R\$ ${(item.priceAtSale * item.quantity).toStringAsFixed(2)}',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 const Divider(),
                 ElevatedButton.icon(
                   onPressed: () => ReceiptService.printReceipt(sale),
                   icon: const Icon(Icons.print, size: 18),
                   label: const Text('REIMPRIMIR COMPROVANTE'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.shade200,
-                    foregroundColor: Colors.black87,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.secondaryContainer,
+                    foregroundColor: Theme.of(
+                      context,
+                    ).colorScheme.onSecondaryContainer,
                   ),
                 ),
               ],
