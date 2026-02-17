@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LiveOcrScannerScreen extends StatefulWidget {
@@ -15,9 +14,10 @@ class LiveOcrScannerScreen extends StatefulWidget {
 class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen> {
   CameraController? _cameraController;
   final TextRecognizer _textRecognizer = TextRecognizer();
-  bool _isBusy = false;
+  bool _isAnalyzing = false;
+  File? _capturedImage;
   RecognizedText? _recognizedText;
-  List<CameraDescription> _cameras = [];
+  Size? _imageSize;
 
   @override
   void initState() {
@@ -26,78 +26,58 @@ class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen> {
   }
 
   Future<void> _initializeCamera() async {
-    _cameras = await availableCameras();
-    if (_cameras.isEmpty) return;
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) return;
 
     _cameraController = CameraController(
-      _cameras[0],
+      cameras[0],
       ResolutionPreset.high,
       enableAudio: false,
-      imageFormatGroup: Platform.isAndroid
-          ? ImageFormatGroup.nv21
-          : ImageFormatGroup.bgra8888,
     );
 
     await _cameraController?.initialize();
-    if (!mounted) return;
-
-    _cameraController?.startImageStream(_processCameraImage);
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _cameraController?.stopImageStream();
     _cameraController?.dispose();
     _textRecognizer.close();
     super.dispose();
   }
 
-  void _processCameraImage(CameraImage image) async {
-    if (_isBusy) return;
-    _isBusy = true;
-
-    final WriteBuffer allBytes = WriteBuffer();
-    for (final Plane plane in image.planes) {
-      allBytes.putUint8List(plane.bytes);
-    }
-    final bytes = allBytes.done().buffer.asUint8List();
-
-    final Size imageSize = Size(
-      image.width.toDouble(),
-      image.height.toDouble(),
-    );
-    final camera = _cameras[0];
-    final imageRotation =
-        InputImageRotationValue.fromRawValue(camera.sensorOrientation) ??
-        InputImageRotation.rotation0deg;
-    final inputImageFormat =
-        InputImageFormatValue.fromRawValue(image.format.raw) ??
-        InputImageFormat.nv21;
-
-    final inputImageMetadata = InputImageMetadata(
-      size: imageSize,
-      rotation: imageRotation,
-      format: inputImageFormat,
-      bytesPerRow: image.planes[0].bytesPerRow,
-    );
-
-    final inputImage = InputImage.fromBytes(
-      bytes: bytes,
-      metadata: inputImageMetadata,
-    );
+  Future<void> _takePicture() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized)
+      return;
 
     try {
+      setState(() => _isAnalyzing = true);
+
+      final XFile photo = await _cameraController!.takePicture();
+      final File imageFile = File(photo.path);
+
+      // Get image dimensions for proper scaling
+      final decodedImage = await decodeImageFromList(
+        await imageFile.readAsBytes(),
+      );
+
+      final inputImage = InputImage.fromFile(imageFile);
       final recognizedText = await _textRecognizer.processImage(inputImage);
+
       if (mounted) {
         setState(() {
+          _capturedImage = imageFile;
           _recognizedText = recognizedText;
+          _imageSize = Size(
+            decodedImage.width.toDouble(),
+            decodedImage.height.toDouble(),
+          );
+          _isAnalyzing = false;
         });
       }
     } catch (e) {
-      debugPrint('Error processing image: $e');
-    } finally {
-      _isBusy = false;
+      debugPrint('Error taking picture/matching OCR: $e');
+      setState(() => _isAnalyzing = false);
     }
   }
 
@@ -108,94 +88,164 @@ class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Toque no nome do produto'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: Text(
+          _capturedImage == null ? 'Focar Produto' : 'Selecionar Nome',
+        ),
+        backgroundColor: Colors.black.withOpacity(0.5),
+        actions: [
+          if (_capturedImage != null)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () => setState(() {
+                _capturedImage = null;
+                _recognizedText = null;
+              }),
+            ),
+        ],
       ),
-      extendBodyBehindAppBar: true,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          CameraPreview(_cameraController!),
-          if (_recognizedText != null) _buildTextOverlays(),
-          _buildInstructionsOverlay(),
+          // Show Camera or Captured Image
+          if (_capturedImage == null)
+            CameraPreview(_cameraController!)
+          else
+            Image.file(_capturedImage!, fit: BoxFit.contain),
+
+          // OCR Overlays (only if image is captured)
+          if (_capturedImage != null && _recognizedText != null)
+            _buildInteractiveOverlays(),
+
+          // Shutter or Loading
+          if (_capturedImage == null) _buildShutterButton(),
+
+          if (_isAnalyzing)
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
+
+          if (_capturedImage == null)
+            _buildInstructions('Aponte e tire uma foto do nome do produto')
+          else if (_recognizedText != null && _recognizedText!.text.isEmpty)
+            _buildInstructions('Nenhum texto detectado. Tente novamente.')
+          else
+            _buildInstructions('Toque no nome do produto correto'),
         ],
       ),
     );
   }
 
-  Widget _buildTextOverlays() {
-    final Size previewSize = _cameraController!.value.previewSize!;
-    // Note: Camera preview size is usually (height, width) because of landscape sensor
-    final double scaleX =
-        MediaQuery.of(context).size.width / previewSize.height;
-    final double scaleY =
-        MediaQuery.of(context).size.height / previewSize.width;
+  Widget _buildShutterButton() {
+    return Positioned(
+      bottom: 60,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: GestureDetector(
+          onTap: _isAnalyzing ? null : _takePicture,
+          child: Container(
+            height: 80,
+            width: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 4),
+            ),
+            child: Container(
+              margin: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: _isAnalyzing
+                  ? const CircularProgressIndicator(color: Colors.black)
+                  : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-    return Stack(
-      children: _recognizedText!.blocks.expand((block) {
-        return block.lines.map((line) {
-          final rect = _scaleRect(line.boundingBox, scaleX, scaleY);
-          return Positioned(
-            left: rect.left,
-            top: rect.top,
-            width: rect.width,
-            height: rect.height,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.pop(context, line.text.trim());
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.cyanAccent, width: 2),
-                  color: Colors.cyanAccent.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Center(
-                  child: Text(
-                    line.text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      backgroundColor: Colors.black45,
+  Widget _buildInteractiveOverlays() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate how the image is fitting on the screen
+        final double screenWidth = constraints.maxWidth;
+        final double screenHeight = constraints.maxHeight;
+
+        final double imageAspectRatio = _imageSize!.width / _imageSize!.height;
+        final double screenAspectRatio = screenWidth / screenHeight;
+
+        double scale, offsetX = 0, offsetY = 0;
+
+        if (imageAspectRatio > screenAspectRatio) {
+          // Limited by width
+          scale = screenWidth / _imageSize!.width;
+          offsetY = (screenHeight - (_imageSize!.height * scale)) / 2;
+        } else {
+          // Limited by height
+          scale = screenHeight / _imageSize!.height;
+          offsetX = (screenWidth - (_imageSize!.width * scale)) / 2;
+        }
+
+        return Stack(
+          children: _recognizedText!.blocks.expand((block) {
+            return block.lines.map((line) {
+              final rect = line.boundingBox;
+              return Positioned(
+                left: offsetX + (rect.left * scale),
+                top: offsetY + (rect.top * scale),
+                width: rect.width * scale,
+                height: rect.height * scale,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context, line.text.trim()),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.cyanAccent, width: 2),
+                      color: Colors.cyanAccent.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        color: Colors.black54,
+                        child: Text(
+                          line.text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        });
-      }).toList(),
+              );
+            });
+          }).toList(),
+        );
+      },
     );
   }
 
-  Rect _scaleRect(Rect rect, double scaleX, double scaleY) {
-    return Rect.fromLTRB(
-      rect.left * scaleX,
-      rect.top * scaleY,
-      rect.right * scaleX,
-      rect.bottom * scaleY,
-    );
-  }
-
-  Widget _buildInstructionsOverlay() {
+  Widget _buildInstructions(String text) {
     return Positioned(
-      bottom: 40,
+      top: 10,
       left: 20,
       right: 20,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Text(
-          'Aponte para o produto e toque no texto azul correspondente ao nome.',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(color: Colors.white, fontSize: 14),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black45,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            text,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+          ),
         ),
       ),
     );

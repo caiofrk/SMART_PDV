@@ -80,6 +80,35 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() {
         _barcodeController.text = barcode;
       });
+
+      // Local lookup - checking if we already know this "sibling"
+      final existingProduct = await context
+          .read<ProductProvider>()
+          .findByBarcode(barcode);
+
+      if (existingProduct != null && mounted) {
+        setState(() {
+          // Only fill if current name is empty to avoid overwriting user's specific capture
+          if (_nameController.text.isEmpty) {
+            _nameController.text = existingProduct.name;
+          }
+          _selectedCategory = existingProduct.category;
+          // We don't fill price/stock as those vary by instance,
+          // but we could fill price if it's usually the same
+          if (_priceController.text.isEmpty) {
+            _priceController.text = existingProduct.price.toStringAsFixed(2);
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Produto "${existingProduct.name}" reconhecido do seu estoque.',
+            ),
+            backgroundColor: Colors.indigo,
+          ),
+        );
+      }
     }
   }
 
