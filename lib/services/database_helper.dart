@@ -27,7 +27,38 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE categories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE
+        )
+      ''');
+      // Migrating current categories if any or just adding defaults
+      final initialCategories = [
+        'Narguile',
+        'Essências',
+        'Carvão',
+        'Isqueiros',
+        'Charutos',
+        'Juices',
+        'Vapes',
+        'Acessórios',
+        'Outros',
+      ];
+      for (var cat in initialCategories) {
+        await db.insert('categories', {'name': cat});
+      }
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -42,6 +73,28 @@ class DatabaseHelper {
         category TEXT
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+      )
+    ''');
+
+    final initialCategories = [
+      'Narguile',
+      'Essências',
+      'Carvão',
+      'Isqueiros',
+      'Charutos',
+      'Juices',
+      'Vapes',
+      'Acessórios',
+      'Outros',
+    ];
+    for (var cat in initialCategories) {
+      await db.insert('categories', {'name': cat});
+    }
 
     await db.execute('''
       CREATE TABLE sales (
@@ -220,6 +273,51 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [userId],
     );
+  }
+
+  // Category methods
+  Future<List<String>> getAllCategories() async {
+    final db = await instance.database;
+    final result = await db.query('categories', orderBy: 'name ASC');
+    return result.map((json) => json['name'] as String).toList();
+  }
+
+  Future<int> insertCategory(String name) async {
+    final db = await instance.database;
+    return await db.insert('categories', {'name': name});
+  }
+
+  Future<int> deleteCategory(String name) async {
+    final db = await instance.database;
+    // 1. Move products in this category to 'Outros'
+    await db.update(
+      'products',
+      {'category': 'Outros'},
+      where: 'category = ?',
+      whereArgs: [name],
+    );
+    // 2. Delete the category
+    return await db.delete('categories', where: 'name = ?', whereArgs: [name]);
+  }
+
+  Future<void> updateCategory(String oldName, String newName) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      // 1. Update categories table
+      await txn.update(
+        'categories',
+        {'name': newName},
+        where: 'name = ?',
+        whereArgs: [oldName],
+      );
+      // 2. Update products table
+      await txn.update(
+        'products',
+        {'category': newName},
+        where: 'category = ?',
+        whereArgs: [oldName],
+      );
+    });
   }
 
   Future close() async {

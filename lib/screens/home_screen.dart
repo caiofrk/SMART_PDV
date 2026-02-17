@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'inventory_screen.dart';
 import 'add_product_screen.dart';
+import 'category_management_screen.dart';
 import 'sales_screen.dart';
 import 'reports_screen.dart';
 import 'change_password_screen.dart';
@@ -219,6 +220,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => const ReportsScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        if (isAdmin)
+                          _buildMenuCard(
+                            context,
+                            'Categorias',
+                            Icons.category,
+                            Colors.indigo.shade600,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const CategoryManagementScreen(),
                                 ),
                               );
                             },
