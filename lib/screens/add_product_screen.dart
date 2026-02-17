@@ -6,6 +6,7 @@ import '../models/product.dart';
 import '../providers/product_provider.dart';
 import 'dart:io';
 import '../services/ocr_service.dart';
+import 'live_ocr_scanner_screen.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -85,7 +86,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   void _scanName() async {
     final name = await Navigator.push<String>(
       context,
-      MaterialPageRoute(builder: (context) => const TextScannerScreen()),
+      MaterialPageRoute(builder: (context) => const LiveOcrScannerScreen()),
     );
 
     if (name != null) {
@@ -411,68 +412,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
             }
           }
         },
-      ),
-    );
-  }
-}
-
-class TextScannerScreen extends StatefulWidget {
-  const TextScannerScreen({super.key});
-
-  @override
-  State<TextScannerScreen> createState() => _TextScannerScreenState();
-}
-
-class _TextScannerScreenState extends State<TextScannerScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Escanear Nome')),
-      body: Stack(
-        children: [
-          // Using a simple camera preview for OCR capture
-          // In a real environment, we'd use a camera package, but here we reuse ImagePicker for reliability
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.text_fields, size: 64, color: Colors.blue),
-                const SizedBox(height: 24),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 32),
-                  child: Text(
-                    'Toque no botão abaixo para tirar uma foto nítida do nome do produto.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final picker = ImagePicker();
-                    final photo = await picker.pickImage(
-                      source: ImageSource.camera,
-                    );
-                    if (photo != null && mounted) {
-                      final text = await OcrService.extractProductName(
-                        File(photo.path),
-                      );
-                      Navigator.pop(context, text);
-                    }
-                  },
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('CAPTURAR E ANALISAR'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 20,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
