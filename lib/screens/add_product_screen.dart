@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
 import 'dart:io';
-import '../services/product_lookup_service.dart';
 import '../services/ocr_service.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -27,7 +26,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _picker = ImagePicker();
 
   bool _isOcrLoading = false;
-  bool _isLookingUp = false;
 
   @override
   void dispose() {
@@ -81,7 +79,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() {
         _barcodeController.text = barcode;
       });
-      _lookupProduct(barcode);
     }
   }
 
@@ -99,33 +96,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
         const SnackBar(content: Text('Nome capturado com sucesso!')),
       );
     }
-  }
-
-  void _lookupProduct(String barcode) async {
-    setState(() => _isLookingUp = true);
-
-    final info = await ProductLookupService.lookupByBarcode(barcode);
-
-    if (info != null && mounted) {
-      setState(() {
-        _nameController.text = info['name'] ?? _nameController.text;
-
-        // Try to match category if it's in our provider
-        final provider = context.read<ProductProvider>();
-        if (info['category'] != null &&
-            provider.categories.contains(info['category'])) {
-          _selectedCategory = info['category'];
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Detalhes do produto preenchidos automaticamente!'),
-        ),
-      );
-    }
-
-    setState(() => _isLookingUp = false);
   }
 
   void _saveProduct() async {
@@ -258,30 +228,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _barcodeController,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Código de Barras',
-                        prefixIcon: const Icon(Icons.qr_code_scanner),
-                        border: const OutlineInputBorder(),
-                        suffixIcon: _isLookingUp
-                            ? const Padding(
-                                padding: EdgeInsets.all(12.0),
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              )
-                            : (_barcodeController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.search),
-                                      onPressed: () => _lookupProduct(
-                                        _barcodeController.text,
-                                      ),
-                                      tooltip: 'Consultar produto',
-                                    )
-                                  : null),
+                        prefixIcon: Icon(Icons.qr_code_scanner),
+                        border: OutlineInputBorder(),
                       ),
                       onChanged: (val) => setState(() {}),
                     ),
@@ -449,60 +399,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          MobileScanner(
-            controller: controller,
-            onDetect: (capture) {
-              final List<Barcode> barcodes = capture.barcodes;
-              if (barcodes.isNotEmpty) {
-                final String? code = barcodes.first.rawValue;
-                if (code != null) {
-                  controller.stop();
-                  Navigator.pop(context, code);
-                }
-              }
-            },
-          ),
-          Center(
-            child: Container(
-              width: 280,
-              height: 180,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.cyan, width: 2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Container(
-                  width: 260,
-                  height: 1,
-                  color: Colors.red.withOpacity(0.5),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black45,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Alinhe o código de barras no centro',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          ),
-        ],
+      body: MobileScanner(
+        controller: controller,
+        onDetect: (capture) {
+          final List<Barcode> barcodes = capture.barcodes;
+          if (barcodes.isNotEmpty) {
+            final String? code = barcodes.first.rawValue;
+            if (code != null) {
+              controller.stop();
+              Navigator.pop(context, code);
+            }
+          }
+        },
       ),
     );
   }
