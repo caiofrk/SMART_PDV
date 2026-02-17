@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'dart:io';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
 
 class LiveOcrScannerScreen extends StatefulWidget {
   const LiveOcrScannerScreen({super.key});

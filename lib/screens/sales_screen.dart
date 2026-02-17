@@ -14,46 +14,18 @@ class SalesScreen extends StatefulWidget {
   State<SalesScreen> createState() => _SalesScreenState();
 }
 
-class _SalesScreenState extends State<SalesScreen> with WidgetsBindingObserver {
+class _SalesScreenState extends State<SalesScreen> {
   final List<CartItem> _cart = [];
   bool _isScanning = false;
-  final MobileScannerController _scannerController = MobileScannerController(
-    formats: [
-      BarcodeFormat.ean13,
-      BarcodeFormat.ean8,
-      BarcodeFormat.upcA,
-      BarcodeFormat.upcE,
-    ],
-  );
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _scannerController.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_scannerController.value.isInitialized) return;
-
-    switch (state) {
-      case AppLifecycleState.resumed:
-        _scannerController.start();
-        break;
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.paused:
-      case AppLifecycleState.detached:
-      case AppLifecycleState.hidden:
-        _scannerController.stop();
-        break;
-    }
   }
 
   void _addToCart(Product product) {
@@ -70,32 +42,46 @@ class _SalesScreenState extends State<SalesScreen> with WidgetsBindingObserver {
   double get _total =>
       _cart.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
 
-  void _onBarCodeDetected(BarcodeCapture capture) async {
+  void _updateQuantity(int index, int delta) {
+    setState(() {
+      _cart[index].quantity += delta;
+      if (_cart[index].quantity <= 0) {
+        _cart.removeAt(index);
+      }
+    });
+  }
+
+  void _onBarCodeDetected(String barcode) async {
     if (_isScanning) return;
+    setState(() => _isScanning = true);
 
-    final barcode = capture.barcodes.first.rawValue;
-    if (barcode != null) {
-      setState(() => _isScanning = true);
+    final product = await context.read<ProductProvider>().findByBarcode(
+      barcode,
+    );
 
-      final product = await context.read<ProductProvider>().findByBarcode(
-        barcode,
-      );
-
-      if (product != null) {
-        _addToCart(product);
+    if (product != null) {
+      _addToCart(product);
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${product.name} adicionado'),
-            duration: const Duration(seconds: 1),
+            duration: const Duration(milliseconds: 500),
+            backgroundColor: Colors.green.shade800,
           ),
         );
-      } else {
+      }
+    } else {
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Produto não encontrado')));
       }
+    }
 
-      await Future.delayed(const Duration(seconds: 1));
+    // Short cooldown
+    await Future.delayed(const Duration(seconds: 1));
+    if (mounted) {
       setState(() => _isScanning = false);
     }
   }
@@ -112,12 +98,11 @@ class _SalesScreenState extends State<SalesScreen> with WidgetsBindingObserver {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
-                builder: (context) => SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.7,
-                  child: MobileScanner(
-                    controller: _scannerController,
-                    onDetect: _onBarCodeDetected,
-                  ),
+                backgroundColor: Colors.transparent,
+                builder: (context) => BarcodeScannerModal(
+                  onCodeDetected: (code) {
+                    _onBarCodeDetected(code);
+                  },
                 ),
               );
             },
@@ -134,13 +119,58 @@ class _SalesScreenState extends State<SalesScreen> with WidgetsBindingObserver {
                     itemBuilder: (context, index) {
                       final item = _cart[index];
                       return ListTile(
-                        title: Text(item.product.name),
-                        subtitle: Text(
-                          'R\$ ${item.product.price} x ${item.quantity}',
-                        ),
-                        trailing: Text(
-                          'R\$ ${(item.product.price * item.quantity).toStringAsFixed(2)}',
+                        title: Text(
+                          item.product.name,
                           style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          'R\$ ${item.product.price.toStringAsFixed(2)} por unidade',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                color: Colors.red,
+                              ),
+                              onPressed: () => _updateQuantity(index, -1),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${item.quantity}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.add_circle_outline,
+                                color: Colors.green,
+                              ),
+                              onPressed: () => _updateQuantity(index, 1),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'R\$ ${(item.product.price * item.quantity).toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -276,4 +306,75 @@ class CartItem {
   final Product product;
   int quantity;
   CartItem({required this.product, required this.quantity});
+}
+
+class BarcodeScannerModal extends StatefulWidget {
+  final Function(String) onCodeDetected;
+  const BarcodeScannerModal({super.key, required this.onCodeDetected});
+
+  @override
+  State<BarcodeScannerModal> createState() => _BarcodeScannerModalState();
+}
+
+class _BarcodeScannerModalState extends State<BarcodeScannerModal> {
+  final MobileScannerController controller = MobileScannerController(
+    formats: [
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.upcA,
+      BarcodeFormat.upcE,
+    ],
+  );
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: MobileScanner(
+              controller: controller,
+              onDetect: (capture) {
+                final barcode = capture.barcodes.first.rawValue;
+                if (barcode != null) {
+                  widget.onCodeDetected(barcode);
+                  // Optional: Navigator.pop(context) if you want to close after scan
+                }
+              },
+            ),
+          ),
+          Positioned(
+            top: 20,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          Center(
+            child: Container(
+              width: 250,
+              height: 150,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.cyanAccent, width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
