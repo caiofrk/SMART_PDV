@@ -14,9 +14,47 @@ class SalesScreen extends StatefulWidget {
   State<SalesScreen> createState() => _SalesScreenState();
 }
 
-class _SalesScreenState extends State<SalesScreen> {
+class _SalesScreenState extends State<SalesScreen> with WidgetsBindingObserver {
   final List<CartItem> _cart = [];
   bool _isScanning = false;
+  final MobileScannerController _scannerController = MobileScannerController(
+    formats: [
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.upcA,
+      BarcodeFormat.upcE,
+    ],
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scannerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_scannerController.value.isInitialized) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _scannerController.start();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        _scannerController.stop();
+        break;
+    }
+  }
 
   void _addToCart(Product product) {
     setState(() {
@@ -77,14 +115,7 @@ class _SalesScreenState extends State<SalesScreen> {
                 builder: (context) => SizedBox(
                   height: MediaQuery.of(context).size.height * 0.7,
                   child: MobileScanner(
-                    controller: MobileScannerController(
-                      formats: [
-                        BarcodeFormat.ean13,
-                        BarcodeFormat.ean8,
-                        BarcodeFormat.upcA,
-                        BarcodeFormat.upcE,
-                      ],
-                    ),
+                    controller: _scannerController,
                     onDetect: _onBarCodeDetected,
                   ),
                 ),

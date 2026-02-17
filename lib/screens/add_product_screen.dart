@@ -27,6 +27,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _picker = ImagePicker();
 
   bool _isOcrLoading = false;
+  bool _isLookingUp = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _barcodeController.dispose();
+    _priceController.dispose();
+    _stockController.dispose();
+    OcrService.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.camera);
@@ -74,7 +85,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  bool _isLookingUp = false;
+  void _scanName() async {
+    final name = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const TextScannerScreen()),
+    );
+
+    if (name != null) {
+      setState(() {
+        _nameController.text = name;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nome capturado com sucesso!')),
+      );
+    }
+  }
 
   void _lookupProduct(String barcode) async {
     setState(() => _isLookingUp = true);
@@ -103,12 +128,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() => _isLookingUp = false);
   }
 
-  @override
-  void dispose() {
-    OcrService.dispose();
-    super.dispose();
-  }
-
   void _saveProduct() async {
     if (_formKey.currentState!.validate()) {
       final product = Product(
@@ -116,8 +135,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
         barcode: _barcodeController.text.isEmpty
             ? null
             : _barcodeController.text,
-        price: double.parse(_priceController.text),
-        stockQuantity: int.parse(_stockController.text),
+        price:
+            double.tryParse(_priceController.text.replaceAll(',', '.')) ?? 0.0,
+        stockQuantity: int.tryParse(_stockController.text) ?? 0,
         imagePath: _image?.path,
         category: _selectedCategory,
       );
@@ -189,13 +209,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         )
-                      : (_image != null
-                            ? IconButton(
-                                icon: const Icon(Icons.text_fields),
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_image != null)
+                              IconButton(
+                                icon: const Icon(Icons.refresh),
                                 onPressed: () => _performOcr(_image!),
-                                tooltip: 'Extrair nome da foto',
-                              )
-                            : null),
+                                tooltip: 'Re-extrair da foto',
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.camera_alt),
+                              onPressed: _scanName,
+                              tooltip: 'Escanear nome com a câmera',
+                            ),
+                          ],
+                        ),
                 ),
                 validator: (value) =>
                     value!.isEmpty ? 'Campo obrigatório' : null,
@@ -254,8 +283,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                     )
                                   : null),
                       ),
-                      onChanged: (val) =>
-                          setState(() {}), // Refresh suffix icon
+                      onChanged: (val) => setState(() {}),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -367,7 +395,8 @@ class BarcodeScannerScreen extends StatefulWidget {
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
 }
 
-class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
+    with WidgetsBindingObserver {
   final MobileScannerController controller = MobileScannerController(
     formats: [
       BarcodeFormat.ean13,
@@ -379,9 +408,33 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!controller.value.isInitialized) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        controller.start();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        controller.stop();
+        break;
+    }
   }
 
   @override
@@ -411,7 +464,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               }
             },
           ),
-          // Viewfinder Overlay
           Center(
             child: Container(
               width: 280,
@@ -448,6 +500,68 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   style: TextStyle(color: Colors.white),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TextScannerScreen extends StatefulWidget {
+  const TextScannerScreen({super.key});
+
+  @override
+  State<TextScannerScreen> createState() => _TextScannerScreenState();
+}
+
+class _TextScannerScreenState extends State<TextScannerScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Escanear Nome')),
+      body: Stack(
+        children: [
+          // Using a simple camera preview for OCR capture
+          // In a real environment, we'd use a camera package, but here we reuse ImagePicker for reliability
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.text_fields, size: 64, color: Colors.blue),
+                const SizedBox(height: 24),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    'Toque no botão abaixo para tirar uma foto nítida do nome do produto.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final picker = ImagePicker();
+                    final photo = await picker.pickImage(
+                      source: ImageSource.camera,
+                    );
+                    if (photo != null && mounted) {
+                      final text = await OcrService.extractProductName(
+                        File(photo.path),
+                      );
+                      Navigator.pop(context, text);
+                    }
+                  },
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('CAPTURAR E ANALISAR'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 20,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
