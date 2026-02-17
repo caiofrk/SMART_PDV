@@ -76,7 +76,17 @@ class _SalesScreenState extends State<SalesScreen> {
                 isScrollControlled: true,
                 builder: (context) => SizedBox(
                   height: MediaQuery.of(context).size.height * 0.7,
-                  child: MobileScanner(onDetect: _onBarCodeDetected),
+                  child: MobileScanner(
+                    controller: MobileScannerController(
+                      formats: [
+                        BarcodeFormat.ean13,
+                        BarcodeFormat.ean8,
+                        BarcodeFormat.upcA,
+                        BarcodeFormat.upcE,
+                      ],
+                    ),
+                    onDetect: _onBarCodeDetected,
+                  ),
                 ),
               );
             },

@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildMenuCard(
                             context,
                             'Adicionar Item',
-                            Icons.add_a_photo,
+                            Icons.qr_code_scanner,
                             Colors.teal.shade600,
                             () {
                               Navigator.push(

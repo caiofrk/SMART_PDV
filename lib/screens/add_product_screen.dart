@@ -111,7 +111,36 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildImageSelector(),
+              // 1. Quick Scan at the top
+              Card(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withOpacity(0.3),
+                child: InkWell(
+                  onTap: _scanBarcode,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.qr_code_scanner,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'CLIQUE PARA ESCANEAR BARCODE',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _nameController,
@@ -221,6 +250,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+              const Text(
+                'Foto do Produto (Opcional)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              _buildImageSelector(),
               const SizedBox(height: 32),
               ElevatedButton.icon(
                 onPressed: _saveProduct,
@@ -276,23 +312,97 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 }
 
-class BarcodeScannerScreen extends StatelessWidget {
+class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
+
+  @override
+  State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
+}
+
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
+  final MobileScannerController controller = MobileScannerController(
+    formats: [
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.upcA,
+      BarcodeFormat.upcE,
+    ],
+    detectionSpeed: DetectionSpeed.normal,
+  );
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Escanear Código')),
-      body: MobileScanner(
-        onDetect: (capture) {
-          final List<Barcode> barcodes = capture.barcodes;
-          if (barcodes.isNotEmpty) {
-            final String? code = barcodes.first.rawValue;
-            if (code != null) {
-              Navigator.pop(context, code);
-            }
-          }
-        },
+      appBar: AppBar(
+        title: const Text('Escanear Código'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.flash_on),
+            onPressed: () => controller.toggleTorch(),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: controller,
+            onDetect: (capture) {
+              final List<Barcode> barcodes = capture.barcodes;
+              if (barcodes.isNotEmpty) {
+                final String? code = barcodes.first.rawValue;
+                if (code != null) {
+                  controller.stop();
+                  Navigator.pop(context, code);
+                }
+              }
+            },
+          ),
+          // Viewfinder Overlay
+          Center(
+            child: Container(
+              width: 280,
+              height: 180,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.cyan, width: 2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Container(
+                  width: 260,
+                  height: 1,
+                  color: Colors.red.withOpacity(0.5),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Alinhe o código de barras no centro',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
