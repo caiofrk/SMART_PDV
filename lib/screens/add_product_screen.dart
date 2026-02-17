@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
 import 'dart:io';
+import '../services/product_lookup_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -43,7 +44,37 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() {
         _barcodeController.text = barcode;
       });
+      _lookupProduct(barcode);
     }
+  }
+
+  bool _isLookingUp = false;
+
+  void _lookupProduct(String barcode) async {
+    setState(() => _isLookingUp = true);
+
+    final info = await ProductLookupService.lookupByBarcode(barcode);
+
+    if (info != null && mounted) {
+      setState(() {
+        _nameController.text = info['name'] ?? _nameController.text;
+
+        // Try to match category if it's in our provider
+        final provider = context.read<ProductProvider>();
+        if (info['category'] != null &&
+            provider.categories.contains(info['category'])) {
+          _selectedCategory = info['category'];
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Detalhes do produto preenchidos automaticamente!'),
+        ),
+      );
+    }
+
+    setState(() => _isLookingUp = false);
   }
 
   void _saveProduct() async {
@@ -121,11 +152,33 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _barcodeController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Código de Barras',
-                        prefixIcon: Icon(Icons.qr_code_scanner),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.qr_code_scanner),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: _isLookingUp
+                            ? const Padding(
+                                padding: EdgeInsets.all(12.0),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : (_barcodeController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.search),
+                                      onPressed: () => _lookupProduct(
+                                        _barcodeController.text,
+                                      ),
+                                      tooltip: 'Consultar produto',
+                                    )
+                                  : null),
                       ),
+                      onChanged: (val) =>
+                          setState(() {}), // Refresh suffix icon
                     ),
                   ),
                   const SizedBox(width: 8),
