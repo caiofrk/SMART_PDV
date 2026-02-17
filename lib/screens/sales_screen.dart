@@ -316,7 +316,8 @@ class BarcodeScannerModal extends StatefulWidget {
   State<BarcodeScannerModal> createState() => _BarcodeScannerModalState();
 }
 
-class _BarcodeScannerModalState extends State<BarcodeScannerModal> {
+class _BarcodeScannerModalState extends State<BarcodeScannerModal>
+    with WidgetsBindingObserver {
   final MobileScannerController controller = MobileScannerController(
     formats: [
       BarcodeFormat.ean13,
@@ -327,9 +328,33 @@ class _BarcodeScannerModalState extends State<BarcodeScannerModal> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!controller.value.isInitialized) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        controller.start();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        controller.stop();
+        break;
+    }
   }
 
   @override

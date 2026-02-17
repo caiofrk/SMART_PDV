@@ -11,7 +11,8 @@ class LiveOcrScannerScreen extends StatefulWidget {
   State<LiveOcrScannerScreen> createState() => _LiveOcrScannerScreenState();
 }
 
-class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen> {
+class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen>
+    with WidgetsBindingObserver {
   CameraController? _cameraController;
   final TextRecognizer _textRecognizer = TextRecognizer();
   bool _isAnalyzing = false;
@@ -22,6 +23,7 @@ class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeCamera();
   }
 
@@ -41,9 +43,30 @@ class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
     _textRecognizer.close();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = _cameraController;
+
+    // App state changed before we got the chance to initialize.
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      cameraController.dispose();
+      _cameraController = null;
+    } else if (state == AppLifecycleState.resumed) {
+      if (_capturedImage == null) {
+        _initializeCamera();
+      }
+    }
   }
 
   Future<void> _takePicture() async {
