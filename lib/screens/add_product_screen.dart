@@ -6,6 +6,7 @@ import '../models/product.dart';
 import '../providers/product_provider.dart';
 import 'dart:io';
 import '../services/product_lookup_service.dart';
+import '../services/ocr_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -25,13 +26,38 @@ class _AddProductScreenState extends State<AddProductScreen> {
   File? _image;
   final _picker = ImagePicker();
 
+  bool _isOcrLoading = false;
+
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
+      final imageFile = File(pickedFile.path);
       setState(() {
-        _image = File(pickedFile.path);
+        _image = imageFile;
       });
+
+      // Automatically try to extract name if field is empty
+      if (_nameController.text.isEmpty) {
+        _performOcr(imageFile);
+      }
     }
+  }
+
+  void _performOcr(File image) async {
+    setState(() => _isOcrLoading = true);
+
+    final detectedName = await OcrService.extractProductName(image);
+
+    if (detectedName != null && mounted) {
+      setState(() {
+        _nameController.text = detectedName;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nome do produto detectado via OCR!')),
+      );
+    }
+
+    setState(() => _isOcrLoading = false);
   }
 
   void _scanBarcode() async {
@@ -75,6 +101,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
 
     setState(() => _isLookingUp = false);
+  }
+
+  @override
+  void dispose() {
+    OcrService.dispose();
+    super.dispose();
   }
 
   void _saveProduct() async {
@@ -144,10 +176,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
               const SizedBox(height: 24),
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Nome do Produto',
-                  prefixIcon: Icon(Icons.label_outline),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.label_outline),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: _isOcrLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : (_image != null
+                            ? IconButton(
+                                icon: const Icon(Icons.text_fields),
+                                onPressed: () => _performOcr(_image!),
+                                tooltip: 'Extrair nome da foto',
+                              )
+                            : null),
                 ),
                 validator: (value) =>
                     value!.isEmpty ? 'Campo obrigatório' : null,
