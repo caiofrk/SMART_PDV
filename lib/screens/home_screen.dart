@@ -5,7 +5,6 @@ import 'add_product_screen.dart';
 import 'category_management_screen.dart';
 import 'sales_screen.dart';
 import 'reports_screen.dart';
-import 'change_password_screen.dart';
 import '../widgets/low_stock_alert.dart';
 import '../providers/product_provider.dart';
 import '../providers/auth_provider.dart';
@@ -70,19 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.password),
-                title: const Text('Alterar Senha'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ChangePasswordScreen(),
-                    ),
-                  );
-                },
-              ),
               if (auth.currentUser?.role == 'admin')
                 ListTile(
                   leading: const Icon(Icons.backup),
@@ -123,37 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeader(context),
               const SizedBox(height: 16),
-              Consumer<AuthProvider>(
-                builder: (context, auth, _) {
-                  if (!auth.isUsingDefaultPassword)
-                    return const SizedBox.shrink();
-                  return Card(
-                    color: Colors.orange.shade900.withOpacity(0.2),
-                    child: ListTile(
-                      leading: const Icon(
-                        Icons.warning_amber_rounded,
-                        color: Colors.orange,
-                      ),
-                      title: const Text(
-                        'Senha Padrão Detectada',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: const Text(
-                        'Por segurança, altere sua senha agora.',
-                      ),
-                      trailing: TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ChangePasswordScreen(),
-                          ),
-                        ),
-                        child: const Text('ALTERAR'),
-                      ),
-                    ),
-                  );
-                },
-              ),
+              const SizedBox.shrink(),
               const LowStockAlert(),
               const SizedBox(height: 24),
               Consumer<AuthProvider>(

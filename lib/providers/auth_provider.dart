@@ -1,89 +1,71 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../models/user.dart';
-import '../services/database_helper.dart';
 
 class AuthProvider with ChangeNotifier {
+  final _supabase = sb.Supabase.instance.client;
   User? _currentUser;
-  bool _isLoading = true; // Start as loading to check session
+  bool _isLoading = true;
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
-  bool get isAuthenticated => _currentUser != null;
-
-  bool get isUsingDefaultPassword {
-    if (_currentUser == null) return false;
-    // Check if password matches hashed 'admin' or plain 'admin' (legacy)
-    final hashedAdmin = DatabaseHelper.instance.hashPassword('admin');
-    return _currentUser!.password == 'admin' ||
-        _currentUser!.password == hashedAdmin;
-  }
+  bool get isAuthenticated => _supabase.auth.currentSession != null;
 
   AuthProvider() {
-    tryAutoLogin();
+    _initialize();
   }
 
-  Future<void> tryAutoLogin() async {
-    _isLoading = true;
-    notifyListeners();
+  void _initialize() {
+    // Listen to Auth state changes
+    _supabase.auth.onAuthStateChange.listen((data) {
+      final sb.Session? session = data.session;
 
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.containsKey('userId')) {
-      final userId = prefs.getInt('userId');
-      if (userId != null) {
-        final user = await DatabaseHelper.instance.getUserById(userId);
-        if (user != null) {
-          _currentUser = user;
-        }
+      if (session != null) {
+        _currentUser = User(
+          id: 0, // Mock ID for compatibility
+          username: session.user.email ?? 'User',
+          password: '', // No password stored locally for OAuth
+          role: session.user.email?.contains('admin') == true
+              ? 'admin'
+              : 'employee',
+        );
+      } else {
+        _currentUser = null;
       }
-    }
-
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  Future<bool> login(String username, String password) async {
-    _isLoading = true;
-    notifyListeners();
-
-    final user = await DatabaseHelper.instance.login(username, password);
-
-    if (user != null) {
-      _currentUser = user;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('userId', user.id!);
       _isLoading = false;
       notifyListeners();
-      return true;
-    }
+    });
+  }
 
-    _isLoading = false;
+  Future<void> loginWithGoogle() async {
+    _isLoading = true;
     notifyListeners();
-    return false;
+    try {
+      await _supabase.auth.signInWithOAuth(sb.OAuthProvider.google);
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> logout() async {
+    await _supabase.auth.signOut();
     _currentUser = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userId');
     notifyListeners();
   }
 
-  Future<bool> updatePassword(String newPassword) async {
-    if (_currentUser == null || _currentUser!.id == null) return false;
-
-    final result = await DatabaseHelper.instance.updateUserPassword(
-      _currentUser!.id!,
-      newPassword,
-    );
-    if (result > 0) {
-      // Refresh user from DB to get the new hashed password in our model
-      _currentUser = await DatabaseHelper.instance.getUserById(
-        _currentUser!.id!,
-      );
-      notifyListeners();
+  // Backwards compatibility for the existing login UI if needed
+  Future<bool> login(String email, String password) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _supabase.auth.signInWithPassword(email: email, password: password);
       return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
-    return false;
   }
 }

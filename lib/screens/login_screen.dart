@@ -116,12 +116,87 @@ class _LoginScreenState extends State<LoginScreen> {
                         builder: (context, auth, child) {
                           return auth.isLoading
                               ? const CircularProgressIndicator()
-                              : ElevatedButton(
-                                  onPressed: _login,
-                                  style: ElevatedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(56),
-                                  ),
-                                  child: const Text('ENTRAR'),
+                              : Column(
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: _login,
+                                      style: ElevatedButton.styleFrom(
+                                        minimumSize: const Size.fromHeight(56),
+                                      ),
+                                      child: const Text('ENTRAR'),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Divider(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withOpacity(0.2),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                          ),
+                                          child: Text(
+                                            'OU',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withOpacity(0.5),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Divider(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withOpacity(0.2),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+                                    OutlinedButton.icon(
+                                      onPressed: () async {
+                                        try {
+                                          await auth.loginWithGoogle();
+                                        } catch (e) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'Erro ao entrar com Google: $e',
+                                                ),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        minimumSize: const Size.fromHeight(56),
+                                        side: BorderSide(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withOpacity(0.5),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.login,
+                                      ), // Replace with a Google icon asset if available
+                                      label: const Text('CONTINUAR COM GOOGLE'),
+                                    ),
+                                  ],
                                 );
                         },
                       ),
