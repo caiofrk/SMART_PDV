@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/product.dart';
@@ -55,6 +56,9 @@ class _SalesScreenState extends State<SalesScreen> {
   void _onBarCodeDetected(String barcode) async {
     if (_isScanning) return;
     setState(() => _isScanning = true);
+
+    // Haptic feedback for scan
+    HapticFeedback.lightImpact();
 
     final product = await context.read<ProductProvider>().findByBarcode(
       barcode,
@@ -234,144 +238,141 @@ class _SalesScreenState extends State<SalesScreen> {
                     },
                   ),
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, -5),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'TOTAL',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'R\$ ${_total.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'TOTAL',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'R\$ ${_total.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _cart.isEmpty
-                          ? null
-                          : () async {
-                              final sale = Sale(
-                                totalAmount: _total,
-                                timestamp: DateTime.now(),
-                                items: _cart
-                                    .map(
-                                      (item) => SaleItem(
-                                        productId: item.product.id!,
-                                        productName: item.product.name,
-                                        quantity: item.quantity,
-                                        priceAtSale: item.product.price,
-                                      ),
-                                    )
-                                    .toList(),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _cart.isEmpty
+                      ? null
+                      : () async {
+                          final sale = Sale(
+                            totalAmount: _total,
+                            timestamp: DateTime.now(),
+                            items: _cart
+                                .map(
+                                  (item) => SaleItem(
+                                    productId: item.product.id!,
+                                    productName: item.product.name,
+                                    quantity: item.quantity,
+                                    priceAtSale: item.product.price,
+                                  ),
+                                )
+                                .toList(),
+                          );
+
+                          try {
+                            final saleId = await context
+                                .read<SalesProvider>()
+                                .addSale(sale);
+                            final completeSale = Sale(
+                              id: saleId,
+                              totalAmount: sale.totalAmount,
+                              timestamp: sale.timestamp,
+                              items: sale.items,
+                            );
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Venda finalizada com sucesso!',
+                                  ),
+                                ),
                               );
 
-                              try {
-                                final saleId = await context
-                                    .read<SalesProvider>()
-                                    .addSale(sale);
-                                final completeSale = Sale(
-                                  id: saleId,
-                                  totalAmount: sale.totalAmount,
-                                  timestamp: sale.timestamp,
-                                  items: sale.items,
-                                );
-
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Venda finalizada com sucesso!',
-                                      ),
+                              // Ask to print receipt
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Venda Concluída'),
+                                  content: const Text(
+                                    'Deseja imprimir o comprovante?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('NÃO'),
                                     ),
-                                  );
-
-                                  // Ask to print receipt
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Venda Concluída'),
-                                      content: const Text(
-                                        'Deseja imprimir o comprovante?',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Text('NÃO'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () async {
-                                            Navigator.pop(context);
-                                            await ReceiptService.printReceipt(
-                                              completeSale,
-                                            );
-                                          },
-                                          child: const Text('SIM'),
-                                        ),
-                                      ],
+                                    TextButton(
+                                      onPressed: () async {
+                                        Navigator.pop(context);
+                                        await ReceiptService.printReceipt(
+                                          completeSale,
+                                        );
+                                      },
+                                      child: const Text('SIM'),
                                     ),
-                                  ).then((_) {
-                                    setState(() => _cart.clear());
-                                  });
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Erro ao finalizar venda: $e',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56),
-                      ),
-                      child: const Text('FINALIZAR VENDA'),
-                    ),
-                  ],
+                                  ],
+                                ),
+                              ).then((_) {
+                                setState(() => _cart.clear());
+                              });
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Erro ao finalizar venda: $e'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                  ),
+                  child: const Text('FINALIZAR VENDA'),
                 ),
-              ),
-              Positioned(
-                top: -80,
-                right: 24,
-                child: FloatingActionButton(
-                  onPressed: _showScanner,
-                  child: const Icon(Icons.qr_code_scanner, size: 28),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 160),
+        child: FloatingActionButton.large(
+          onPressed: _showScanner,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          child: const Icon(
+            Icons.qr_code_scanner,
+            size: 56,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
@@ -407,6 +408,15 @@ class _BarcodeScannerModalState extends State<BarcodeScannerModal>
   );
 
   bool _isFlashOn = false;
+  bool _showSuccessOverlay = false;
+
+  void _triggerSuccessFeedback() {
+    setState(() => _showSuccessOverlay = true);
+    HapticFeedback.mediumImpact();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _showSuccessOverlay = false);
+    });
+  }
 
   @override
   void initState() {
@@ -455,6 +465,7 @@ class _BarcodeScannerModalState extends State<BarcodeScannerModal>
               onDetect: (capture) {
                 final barcode = capture.barcodes.first.rawValue;
                 if (barcode != null) {
+                  _triggerSuccessFeedback();
                   widget.onCodeDetected(barcode);
                 }
               },
@@ -524,6 +535,27 @@ class _BarcodeScannerModalState extends State<BarcodeScannerModal>
               ),
             ),
           ),
+          // Success Flash Overlay
+          if (_showSuccessOverlay)
+            IgnorePointer(
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.4),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: 80,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
