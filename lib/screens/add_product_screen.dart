@@ -15,7 +15,8 @@ class AddProductScreen extends StatefulWidget {
   State<AddProductScreen> createState() => _AddProductScreenState();
 }
 
-class _AddProductScreenState extends State<AddProductScreen> {
+class _AddProductScreenState extends State<AddProductScreen>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _barcodeController = TextEditingController();
@@ -27,15 +28,48 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _picker = ImagePicker();
 
   bool _isOcrLoading = false;
+  final MobileScannerController _scannerController = MobileScannerController(
+    formats: [
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.upcA,
+      BarcodeFormat.upcE,
+    ],
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scannerController.dispose();
     _nameController.dispose();
     _barcodeController.dispose();
     _priceController.dispose();
     _stockController.dispose();
     OcrService.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_scannerController.value.isInitialized) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _scannerController.start();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        _scannerController.stop();
+        break;
+    }
   }
 
   Future<void> _pickImage() async {
@@ -70,6 +104,40 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() => _isOcrLoading = false);
   }
 
+  void _handleDetectedBarcode(String barcode) async {
+    if (barcode == _barcodeController.text) return; // Ignore if same
+
+    setState(() {
+      _barcodeController.text = barcode;
+    });
+
+    // Local lookup - checking if we already know this "sibling"
+    final existingProduct = await context.read<ProductProvider>().findByBarcode(
+      barcode,
+    );
+
+    if (existingProduct != null && mounted) {
+      setState(() {
+        if (_nameController.text.isEmpty) {
+          _nameController.text = existingProduct.name;
+        }
+        _selectedCategory = existingProduct.category;
+        if (_priceController.text.isEmpty) {
+          _priceController.text = existingProduct.price.toStringAsFixed(2);
+        }
+      });
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Produto "${existingProduct.name}" reconhecido.'),
+          backgroundColor: Colors.indigo,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   void _scanBarcode() async {
     final barcode = await Navigator.push<String>(
       context,
@@ -77,38 +145,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
 
     if (barcode != null) {
-      setState(() {
-        _barcodeController.text = barcode;
-      });
-
-      // Local lookup - checking if we already know this "sibling"
-      final existingProduct = await context
-          .read<ProductProvider>()
-          .findByBarcode(barcode);
-
-      if (existingProduct != null && mounted) {
-        setState(() {
-          // Only fill if current name is empty to avoid overwriting user's specific capture
-          if (_nameController.text.isEmpty) {
-            _nameController.text = existingProduct.name;
-          }
-          _selectedCategory = existingProduct.category;
-          // We don't fill price/stock as those vary by instance,
-          // but we could fill price if it's usually the same
-          if (_priceController.text.isEmpty) {
-            _priceController.text = existingProduct.price.toStringAsFixed(2);
-          }
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Produto "${existingProduct.name}" reconhecido do seu estoque.',
-            ),
-            backgroundColor: Colors.indigo,
-          ),
-        );
-      }
+      _handleDetectedBarcode(barcode);
     }
   }
 
@@ -164,32 +201,87 @@ class _AddProductScreenState extends State<AddProductScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Quick Scan at the top
-              Card(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withOpacity(0.3),
-                child: InkWell(
-                  onTap: _scanBarcode,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.qr_code_scanner,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'CLIQUE PARA ESCANEAR BARCODE',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
+              // 1. Live Scanner Frame
+              Container(
+                height: 220,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Stack(
+                    children: [
+                      MobileScanner(
+                        controller: _scannerController,
+                        onDetect: (capture) {
+                          final barcode = capture.barcodes.first.rawValue;
+                          if (barcode != null) {
+                            _handleDetectedBarcode(barcode);
+                          }
+                        },
+                      ),
+                      // Scanner Overlay Frame
+                      Center(
+                        child: Container(
+                          width: 200,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.cyanAccent,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      // Flash Toggle
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: CircleAvatar(
+                          backgroundColor: Colors.black45,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.flash_on,
+                              color: Colors.white,
+                            ),
+                            onPressed: () => _scannerController.toggleTorch(),
+                          ),
+                        ),
+                      ),
+                      // Label
+                      Positioned(
+                        bottom: 15,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'ALINHE O CÓDIGO AQUI',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
