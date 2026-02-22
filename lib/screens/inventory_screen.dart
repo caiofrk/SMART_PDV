@@ -152,7 +152,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                 ),
               ),
-            Text('Código: ${product.barcode ?? "N/A"}'),
+            Text(
+              'R\$ ${product.price.toStringAsFixed(2)}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
             Text(
               'Estoque: ${product.stockQuantity}',
               style: TextStyle(
@@ -164,14 +170,91 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
           ],
         ),
-        trailing: Text(
-          'R\$ ${product.price.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Theme.of(context).colorScheme.primary,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit_note, color: Colors.blue),
+              onPressed: () => _showEditStockDialog(product),
+              tooltip: 'Editar Estoque',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              onPressed: () => _showDeleteConfirmation(product),
+              tooltip: 'Excluir Produto',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditStockDialog(Product product) {
+    final controller = TextEditingController(
+      text: product.stockQuantity.toString(),
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Editar Estoque: ${product.name}'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Quantidade em estoque',
+            border: OutlineInputBorder(),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newStock = int.tryParse(controller.text);
+              if (newStock != null) {
+                final updatedProduct = product.copyWith(
+                  stockQuantity: newStock,
+                );
+                context.read<ProductProvider>().updateProduct(updatedProduct);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Estoque atualizado!')),
+                );
+              }
+            },
+            child: const Text('SALVAR'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(Product product) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir Produto'),
+        content: Text('Deseja realmente excluir "${product.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<ProductProvider>().deleteProduct(product.id!);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Produto removido')));
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('EXCLUIR'),
+          ),
+        ],
       ),
     );
   }
