@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
@@ -172,8 +174,7 @@ class _AddProductScreenState extends State<AddProductScreen>
         barcode: _barcodeController.text.isEmpty
             ? null
             : _barcodeController.text,
-        price:
-            double.tryParse(_priceController.text.replaceAll(',', '.')) ?? 0.0,
+        price: _parsePrice(_priceController.text),
         stockQuantity: int.tryParse(_stockController.text) ?? 0,
         imagePath: _image?.path,
         category: _selectedCategory,
@@ -187,6 +188,13 @@ class _AddProductScreenState extends State<AddProductScreen>
         Navigator.pop(context);
       }
     }
+  }
+
+  double _parsePrice(String text) {
+    // Remove everything except numbers
+    String cleaned = text.replaceAll(RegExp(r'[^\d]'), '');
+    if (cleaned.isEmpty) return 0.0;
+    return double.parse(cleaned) / 100;
   }
 
   @override
@@ -371,15 +379,18 @@ class _AddProductScreenState extends State<AddProductScreen>
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _priceController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'Preço (R\$)',
                         prefixIcon: Icon(Icons.attach_money),
                         border: OutlineInputBorder(),
                       ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        CurrencyInputFormatter(),
+                      ],
                       validator: (value) =>
-                          value!.isEmpty ? 'Obrigatório' : null,
+                          value == null || value.isEmpty ? 'Obrigatório' : null,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -534,6 +545,31 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           }
         },
       ),
+    );
+  }
+}
+
+class CurrencyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    // Strip everything except digits
+    String cleaned = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (cleaned.isEmpty) return newValue.copyWith(text: '');
+
+    double value = double.parse(cleaned);
+    final formatter = NumberFormat.simpleCurrency(locale: "pt_BR");
+    String newText = formatter.format(value / 100);
+
+    return newValue.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
     );
   }
 }
