@@ -41,7 +41,10 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      await _supabase.auth.signInWithOAuth(sb.OAuthProvider.google);
+      await _supabase.auth.signInWithOAuth(
+        sb.OAuthProvider.google,
+        redirectTo: 'pdvjltabacaria://login-callback/',
+      );
     } catch (e) {
       _isLoading = false;
       notifyListeners();
