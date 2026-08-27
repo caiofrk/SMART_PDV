@@ -244,7 +244,7 @@ class _SalesScreenState extends State<SalesScreen> {
               color: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, -5),
                 ),
@@ -542,7 +542,7 @@ class _BarcodeScannerModalState extends State<BarcodeScannerModal>
                 width: double.infinity,
                 height: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.4),
+                  color: Colors.green.withValues(alpha: 0.4),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
                   ),

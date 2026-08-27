@@ -10,19 +10,24 @@ class BackupService {
       final file = File(dbPath);
 
       if (await file.exists()) {
+        if (!context.mounted) return;
         final box = context.findRenderObject() as RenderBox?;
         
-        await Share.shareXFiles(
-          [XFile(dbPath)],
-          text: 'Backup do PDV - ${DateTime.now().toString()}',
-          sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(dbPath)],
+            text: 'Backup do PDV - ${DateTime.now().toString()}',
+            sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+          ),
         );
       } else {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Erro: Banco de dados não encontrado.')),
         );
       }
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao exportar backup: $e')),
       );

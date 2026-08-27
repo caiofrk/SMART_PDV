@@ -30,7 +30,7 @@ class LowStockAlert extends StatelessWidget {
               border: Border.all(color: Colors.red.shade200),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

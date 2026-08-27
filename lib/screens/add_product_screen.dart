@@ -333,7 +333,7 @@ class _AddProductScreenState extends State<AddProductScreen>
               Consumer<ProductProvider>(
                 builder: (context, provider, _) {
                   return DropdownButtonFormField<String>(
-                    value: _selectedCategory,
+                    initialValue: _selectedCategory,
                     decoration: const InputDecoration(
                       labelText: 'Categoria',
                       prefixIcon: Icon(Icons.category_outlined),
@@ -438,10 +438,10 @@ class _AddProductScreenState extends State<AddProductScreen>
       child: Container(
         height: 200,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
           ),
         ),
         child: _image != null

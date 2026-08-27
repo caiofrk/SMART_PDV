@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 class LiveOcrScannerScreen extends StatefulWidget {
   const LiveOcrScannerScreen({super.key});
@@ -70,8 +69,9 @@ class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen>
   }
 
   Future<void> _takePicture() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized)
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
       return;
+    }
 
     try {
       setState(() => _isAnalyzing = true);
@@ -116,7 +116,7 @@ class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen>
         title: Text(
           _capturedImage == null ? 'Focar Produto' : 'Selecionar Nome',
         ),
-        backgroundColor: Colors.black.withOpacity(0.5),
+        backgroundColor: Colors.black.withValues(alpha: 0.5),
         actions: [
           if (_capturedImage != null)
             IconButton(
@@ -225,7 +225,7 @@ class _LiveOcrScannerScreenState extends State<LiveOcrScannerScreen>
                   child: Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.cyanAccent, width: 2),
-                      color: Colors.cyanAccent.withOpacity(0.2),
+                      color: Colors.cyanAccent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Center(

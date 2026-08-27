@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.05),
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
               Theme.of(context).colorScheme.surface,
             ],
           ),
@@ -215,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
           radius: 40,
           backgroundColor: Theme.of(
             context,
-          ).colorScheme.primary.withOpacity(0.2),
+          ).colorScheme.primary.withValues(alpha: 0.2),
           child: Icon(
             Icons.store,
             size: 40,
@@ -235,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'Gerencie sua tabacaria com facilidade',
           style: GoogleFonts.outfit(
             fontSize: 14,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
       ],

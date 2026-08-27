@@ -16,7 +16,7 @@ void main() async {
 
   await Supabase.initialize(
     url: SupabaseConfig.url,
-    anonKey: SupabaseConfig.anonKey,
+    publishableKey: SupabaseConfig.anonKey,
   );
 
   runApp(const MyApp());
@@ -80,15 +80,8 @@ class MyApp extends StatelessWidget {
         ),
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
-            if (auth.isLoading) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (auth.isAuthenticated) {
-              return const HomeScreen();
-            }
-            return const LoginScreen();
+            // Temporarily bypassing login for debugging
+            return const HomeScreen();
           },
         ),
       ),

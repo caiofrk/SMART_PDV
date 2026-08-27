@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                             color: Theme.of(context)
                                                 .colorScheme
                                                 .onSurface
-                                                .withOpacity(0.2),
+                                                .withValues(alpha: 0.2),
                                           ),
                                         ),
                                         Padding(
@@ -146,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                               color: Theme.of(context)
                                                   .colorScheme
                                                   .onSurface
-                                                  .withOpacity(0.5),
+                                                  .withValues(alpha: 0.5),
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
                                             ),
@@ -157,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                             color: Theme.of(context)
                                                 .colorScheme
                                                 .onSurface
-                                                .withOpacity(0.2),
+                                                .withValues(alpha: 0.2),
                                           ),
                                         ),
                                       ],
@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           color: Theme.of(context)
                                               .colorScheme
                                               .primary
-                                              .withOpacity(0.5),
+                                              .withValues(alpha: 0.5),
                                         ),
                                       ),
                                       icon: const Icon(
@@ -210,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],
