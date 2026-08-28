@@ -379,6 +379,7 @@ class _AddProductScreenState extends State<AddProductScreen>
                 children: [
                   Expanded(
                     child: TextFormField(
+                      controller: _priceController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'Preço (R\$)',
