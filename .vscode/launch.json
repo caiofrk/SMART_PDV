@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Store App",
+            "request": "launch",
+            "type": "dart",
+            "program": "apps/store_app/lib/main.dart"
+        },
+        {
+            "name": "Customer App",
+            "request": "launch",
+            "type": "dart",
+            "program": "apps/customer_app/lib/main.dart"
+        }
+    ]
+}
