@@ -30,14 +30,32 @@ class Product {
   }
 
   factory Product.fromMap(Map<String, dynamic> map) {
+    double parsedPrice = 0.0;
+    if (map['price'] != null) {
+      if (map['price'] is num) {
+        parsedPrice = (map['price'] as num).toDouble();
+      } else if (map['price'] is String) {
+        parsedPrice = double.tryParse(map['price']) ?? 0.0;
+      }
+    }
+
+    int parsedStock = 0;
+    if (map['stockQuantity'] != null) {
+      if (map['stockQuantity'] is num) {
+        parsedStock = (map['stockQuantity'] as num).toInt();
+      } else if (map['stockQuantity'] is String) {
+        parsedStock = int.tryParse(map['stockQuantity']) ?? 0;
+      }
+    }
+
     return Product(
-      id: map['id'],
-      name: map['name'],
-      barcode: map['barcode'],
-      price: map['price'],
-      stockQuantity: map['stockQuantity'],
-      imagePath: map['imagePath'],
-      category: map['category'],
+      id: map['id'] != null ? int.tryParse(map['id'].toString()) : null,
+      name: map['name']?.toString() ?? '',
+      barcode: map['barcode']?.toString(),
+      price: parsedPrice,
+      stockQuantity: parsedStock,
+      imagePath: map['imagePath']?.toString(),
+      category: map['category']?.toString(),
     );
   }
 
