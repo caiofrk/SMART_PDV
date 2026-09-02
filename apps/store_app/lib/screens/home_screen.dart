@@ -170,8 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
               Consumer<AuthProvider>(
                 builder: (context, auth, _) {
-                  final isAdmin = auth.currentUser?.role == 'admin' ||
-                      (auth.currentUser?.username.toLowerCase().contains('admin') ?? false);
+                  final isAdmin = auth.currentUser?.role == 'admin';
                   return Expanded(
                     child: GridView.count(
                       crossAxisCount: 2,

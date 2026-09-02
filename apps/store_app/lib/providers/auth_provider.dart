@@ -21,13 +21,21 @@ class AuthProvider with ChangeNotifier {
       final sb.Session? session = data.session;
 
       if (session != null) {
+        final roleMeta = session.user.appMetadata['role'] ??
+            session.user.userMetadata?['role'];
+        // Default to admin for authenticated store personnel unless explicitly flagged as employee
+        final role = roleMeta == 'employee' ? 'employee' : 'admin';
+
+        final displayName = session.user.userMetadata?['full_name'] ??
+            session.user.userMetadata?['name'] ??
+            session.user.email?.split('@').first ??
+            'User';
+
         _currentUser = User(
           id: 0, // Mock ID for compatibility
-          username: session.user.email ?? 'User',
+          username: displayName.toString(),
           password: '', // No password stored locally for OAuth
-          role: session.user.email?.contains('admin') == true
-              ? 'admin'
-              : 'employee',
+          role: role,
         );
       } else {
         _currentUser = null;
