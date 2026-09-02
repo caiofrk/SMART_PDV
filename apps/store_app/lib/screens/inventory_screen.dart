@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import 'package:shared/shared.dart';
@@ -170,13 +171,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
           ],
         ),
+        onTap: () => _showEditProductDialog(product),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.edit_note, color: Colors.blue),
-              onPressed: () => _showEditStockDialog(product),
-              tooltip: 'Editar Estoque',
+              icon: const Icon(Icons.edit, color: Colors.blue),
+              onPressed: () => _showEditProductDialog(product),
+              tooltip: 'Editar Produto',
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
@@ -189,45 +191,146 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  void _showEditStockDialog(Product product) {
-    final controller = TextEditingController(
+  double _parsePrice(String text) {
+    if (text.isEmpty) return 0.0;
+    String cleaned = text.replaceAll('R\$', '').replaceAll(' ', '').replaceAll('\u00a0', '').trim();
+    if (cleaned.isEmpty) return 0.0;
+
+    if (cleaned.contains('.') && cleaned.contains(',')) {
+      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+        cleaned = cleaned.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        cleaned = cleaned.replaceAll(',', '');
+      }
+    } else if (cleaned.contains(',')) {
+      cleaned = cleaned.replaceAll(',', '.');
+    }
+
+    final directParsed = double.tryParse(cleaned);
+    if (directParsed != null && directParsed > 0) {
+      return directParsed;
+    }
+
+    String digitsOnly = text.replaceAll(RegExp(r'[^\d]'), '');
+    if (digitsOnly.isEmpty) return 0.0;
+    return (double.tryParse(digitsOnly) ?? 0.0) / 100;
+  }
+
+  void _showEditProductDialog(Product product) {
+    final nameController = TextEditingController(text: product.name);
+    final priceController = TextEditingController(
+      text: product.price > 0
+          ? NumberFormat.simpleCurrency(locale: "pt_BR").format(product.price)
+          : '',
+    );
+    final stockController = TextEditingController(
       text: product.stockQuantity.toString(),
     );
+    String? selectedCategory = product.category;
+    final formKey = GlobalKey<FormState>();
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Editar Estoque: ${product.name}'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Quantidade em estoque',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCELAR'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newStock = int.tryParse(controller.text);
-              if (newStock != null) {
-                final updatedProduct = product.copyWith(
-                  stockQuantity: newStock,
-                );
-                context.read<ProductProvider>().updateProduct(updatedProduct);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Estoque atualizado!')),
-                );
-              }
-            },
-            child: const Text('SALVAR'),
-          ),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final categories = context.read<ProductProvider>().categories
+              .where((c) => c != 'Todos')
+              .toList();
+
+          return AlertDialog(
+            title: Text('Editar: ${product.name}'),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nome do Produto',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Informe o nome'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Preço (R\$)',
+                        prefixIcon: Icon(Icons.attach_money),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Informe o preço';
+                        }
+                        if (_parsePrice(val) <= 0) {
+                          return 'Preço deve ser maior que zero';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: stockController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Quantidade em estoque',
+                        prefixIcon: Icon(Icons.inventory),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Informe a quantidade'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCategory,
+                      decoration: const InputDecoration(
+                        labelText: 'Categoria',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: categories
+                          .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+                          .toList(),
+                      onChanged: (val) => setDialogState(() => selectedCategory = val),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCELAR'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (formKey.currentState!.validate()) {
+                    final newPrice = _parsePrice(priceController.text);
+                    final newStock = int.tryParse(stockController.text) ?? 0;
+                    final updated = product.copyWith(
+                      name: nameController.text.trim(),
+                      price: newPrice,
+                      stockQuantity: newStock,
+                      category: selectedCategory,
+                    );
+                    context.read<ProductProvider>().updateProduct(updated);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Produto atualizado com sucesso!')),
+                    );
+                  }
+                },
+                child: const Text('SALVAR'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -25,6 +25,7 @@ class _AddProductScreenState extends State<AddProductScreen>
   final _priceController = TextEditingController();
   final _stockController = TextEditingController();
   String? _selectedCategory;
+  int? _existingProductId;
 
   File? _image;
   final _picker = ImagePicker();
@@ -120,21 +121,24 @@ class _AddProductScreenState extends State<AddProductScreen>
 
     if (existingProduct != null && mounted) {
       setState(() {
+        _existingProductId = existingProduct.id;
         if (_nameController.text.isEmpty) {
           _nameController.text = existingProduct.name;
         }
         _selectedCategory = existingProduct.category;
-        if (_priceController.text.isEmpty) {
-          _priceController.text = existingProduct.price.toStringAsFixed(2);
+        if (existingProduct.price > 0) {
+          _priceController.text = NumberFormat.simpleCurrency(
+            locale: "pt_BR",
+          ).format(existingProduct.price);
         }
       });
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Produto "${existingProduct.name}" reconhecido.'),
+          content: Text('Produto "${existingProduct.name}" reconhecido. Altere os dados e salve para atualizar.'),
           backgroundColor: Colors.indigo,
-          duration: const Duration(seconds: 2),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -158,6 +162,7 @@ class _AddProductScreenState extends State<AddProductScreen>
     );
 
     if (name != null) {
+      if (!mounted) return;
       setState(() {
         _nameController.text = name;
       });
@@ -169,32 +174,81 @@ class _AddProductScreenState extends State<AddProductScreen>
 
   void _saveProduct() async {
     if (_formKey.currentState!.validate()) {
-      final product = Product(
-        name: _nameController.text,
-        barcode: _barcodeController.text.isEmpty
-            ? null
-            : _barcodeController.text,
-        price: _parsePrice(_priceController.text),
-        stockQuantity: int.tryParse(_stockController.text) ?? 0,
-        imagePath: _image?.path,
-        category: _selectedCategory,
-      );
+      final barcode = _barcodeController.text.trim().isEmpty ? null : _barcodeController.text.trim();
+      final parsedPrice = _parsePrice(_priceController.text);
+      final stock = int.tryParse(_stockController.text.trim()) ?? 0;
+      final provider = context.read<ProductProvider>();
 
-      await context.read<ProductProvider>().addProduct(product);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Produto adicionado com sucesso!')),
+      // Check if product already exists by tracked ID or by barcode
+      int? targetId = _existingProductId;
+      if (targetId == null && barcode != null) {
+        final existingByBarcode = await provider.findByBarcode(barcode);
+        if (existingByBarcode != null) {
+          targetId = existingByBarcode.id;
+        }
+      }
+
+      if (targetId != null) {
+        final updatedProduct = Product(
+          id: targetId,
+          name: _nameController.text.trim(),
+          barcode: barcode,
+          price: parsedPrice,
+          stockQuantity: stock,
+          imagePath: _image?.path,
+          category: _selectedCategory,
         );
-        Navigator.pop(context);
+        await provider.updateProduct(updatedProduct);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Produto atualizado com sucesso!')),
+          );
+          Navigator.pop(context);
+        }
+      } else {
+        final product = Product(
+          name: _nameController.text.trim(),
+          barcode: barcode,
+          price: parsedPrice,
+          stockQuantity: stock,
+          imagePath: _image?.path,
+          category: _selectedCategory,
+        );
+        await provider.addProduct(product);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Produto adicionado com sucesso!')),
+          );
+          Navigator.pop(context);
+        }
       }
     }
   }
 
   double _parsePrice(String text) {
-    // Remove everything except numbers
-    String cleaned = text.replaceAll(RegExp(r'[^\d]'), '');
+    if (text.isEmpty) return 0.0;
+    String cleaned = text.replaceAll('R\$', '').replaceAll(' ', '').replaceAll('\u00a0', '').trim();
     if (cleaned.isEmpty) return 0.0;
-    return double.parse(cleaned) / 100;
+
+    if (cleaned.contains('.') && cleaned.contains(',')) {
+      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+        cleaned = cleaned.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        cleaned = cleaned.replaceAll(',', '');
+      }
+    } else if (cleaned.contains(',')) {
+      cleaned = cleaned.replaceAll(',', '.');
+    }
+
+    final directParsed = double.tryParse(cleaned);
+    if (directParsed != null && directParsed > 0) {
+      return directParsed;
+    }
+
+    // Fallback: digits only / 100
+    String digitsOnly = text.replaceAll(RegExp(r'[^\d]'), '');
+    if (digitsOnly.isEmpty) return 0.0;
+    return (double.tryParse(digitsOnly) ?? 0.0) / 100;
   }
 
   @override
@@ -390,8 +444,15 @@ class _AddProductScreenState extends State<AddProductScreen>
                         FilteringTextInputFormatter.digitsOnly,
                         CurrencyInputFormatter(),
                       ],
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Obrigatório' : null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Obrigatório';
+                        }
+                        if (_parsePrice(value) <= 0) {
+                          return 'Informe um preço válido maior que zero';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -421,7 +482,11 @@ class _AddProductScreenState extends State<AddProductScreen>
               ElevatedButton.icon(
                 onPressed: _saveProduct,
                 icon: const Icon(Icons.save),
-                label: const Text('SALVAR PRODUTO'),
+                label: Text(
+                  _existingProductId != null
+                      ? 'ATUALIZAR PRODUTO'
+                      : 'SALVAR PRODUTO',
+                ),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
                 ),

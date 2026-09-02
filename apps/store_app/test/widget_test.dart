@@ -1,30 +1,24 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:pdv_jl_tabacaria/main.dart';
+import 'package:shared/shared.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('Product model serialization and deserialization', () {
+    final product = Product(
+      id: 1,
+      name: 'cigarro',
+      barcode: '123456',
+      price: 10.0,
+      stockQuantity: 10,
+      category: 'Outros',
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    final map = product.toMap();
+    expect(map['price'], 10.0);
+    expect(map['name'], 'cigarro');
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    final reconstructed = Product.fromMap(map);
+    expect(reconstructed.price, 10.0);
+    expect(reconstructed.name, 'cigarro');
+    expect(reconstructed.stockQuantity, 10);
   });
 }
