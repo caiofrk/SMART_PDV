@@ -9,6 +9,7 @@ import '../widgets/low_stock_alert.dart';
 import '../providers/product_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/backup_service.dart';
+import '../services/sync_service.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Future.microtask(
       () => context.read<ProductProvider>().fetchAndSetProducts(),
     );
+    SyncService.instance.startPeriodicSync();
   }
 
   @override
@@ -39,6 +41,60 @@ class _HomeScreenState extends State<HomeScreen> {
             letterSpacing: 1.2,
           ),
         ),
+        actions: [
+          // Cloud Sync Action
+          ValueListenableBuilder<bool>(
+            valueListenable: SyncService.instance.isSyncing,
+            builder: (context, isSyncing, _) {
+              return ValueListenableBuilder<int>(
+                valueListenable: SyncService.instance.pendingCount,
+                builder: (context, pending, _) {
+                  return IconButton(
+                    icon: isSyncing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Badge(
+                            isLabelVisible: pending > 0,
+                            label: Text(pending.toString()),
+                            child: const Icon(Icons.cloud_sync_outlined),
+                          ),
+                    tooltip: isSyncing
+                        ? 'Sincronizando com nuvem...'
+                        : 'Sincronizar com nuvem ($pending pendentes)',
+                    onPressed: isSyncing
+                        ? null
+                        : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Iniciando sincronização com a nuvem...'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                            final success = await SyncService.instance.syncDelta();
+                            if (context.mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    success
+                                        ? 'Nuvem atualizada com sucesso!'
+                                        : 'Aviso: Falha ao sincronizar. Tentaremos novamente em breve.',
+                                  ),
+                                  backgroundColor:
+                                      success ? Colors.green : Colors.orange,
+                                ),
+                              );
+                            }
+                          },
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
       drawer: Consumer<AuthProvider>(
         builder: (context, auth, _) => Drawer(
@@ -114,8 +170,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
               Consumer<AuthProvider>(
                 builder: (context, auth, _) {
-                  // Temporarily forcing isAdmin to true since we bypassed login
-                  final isAdmin = true; // auth.currentUser?.role == 'admin';
+                  final isAdmin = auth.currentUser?.role == 'admin' ||
+                      (auth.currentUser?.username.toLowerCase().contains('admin') ?? false);
                   return Expanded(
                     child: GridView.count(
                       crossAxisCount: 2,

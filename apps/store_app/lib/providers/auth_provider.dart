@@ -46,9 +46,10 @@ class AuthProvider with ChangeNotifier {
         redirectTo: 'pdvjltabacaria://login-callback/',
       );
     } catch (e) {
+      rethrow;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      rethrow;
     }
   }
 

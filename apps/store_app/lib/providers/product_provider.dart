@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared/shared.dart';
 import '../services/database_helper.dart';
+import '../services/sync_service.dart';
 
 class ProductProvider with ChangeNotifier {
   List<Product> _products = [];
@@ -90,6 +91,7 @@ class ProductProvider with ChangeNotifier {
     final newProduct = product.copyWith(id: id);
     _products.add(newProduct);
     notifyListeners();
+    SyncService.instance.updatePendingCount();
   }
 
   Future<void> updateProduct(Product product) async {
@@ -98,6 +100,7 @@ class ProductProvider with ChangeNotifier {
     if (index != -1) {
       _products[index] = product;
       notifyListeners();
+      SyncService.instance.updatePendingCount();
     }
   }
 
@@ -105,6 +108,7 @@ class ProductProvider with ChangeNotifier {
     await DatabaseHelper.instance.deleteProduct(id);
     _products.removeWhere((p) => p.id == id);
     notifyListeners();
+    SyncService.instance.updatePendingCount();
   }
 
   Future<Product?> findByBarcode(String barcode) async {

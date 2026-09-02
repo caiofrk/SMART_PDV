@@ -40,13 +40,16 @@ class Product {
     }
 
     int parsedStock = 0;
-    if (map['stockQuantity'] != null) {
-      if (map['stockQuantity'] is num) {
-        parsedStock = (map['stockQuantity'] as num).toInt();
-      } else if (map['stockQuantity'] is String) {
-        parsedStock = int.tryParse(map['stockQuantity']) ?? 0;
+    final stockVal = map['stockQuantity'] ?? map['stock_quantity'];
+    if (stockVal != null) {
+      if (stockVal is num) {
+        parsedStock = stockVal.toInt();
+      } else if (stockVal is String) {
+        parsedStock = int.tryParse(stockVal) ?? 0;
       }
     }
+
+    final imageVal = map['imagePath'] ?? map['image_path'];
 
     return Product(
       id: map['id'] != null ? int.tryParse(map['id'].toString()) : null,
@@ -54,7 +57,7 @@ class Product {
       barcode: map['barcode']?.toString(),
       price: parsedPrice,
       stockQuantity: parsedStock,
-      imagePath: map['imagePath']?.toString(),
+      imagePath: imageVal?.toString(),
       category: map['category']?.toString(),
     );
   }

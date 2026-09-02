@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/sale.dart';
 import '../services/database_helper.dart';
+import '../services/sync_service.dart';
 
 class SalesProvider with ChangeNotifier {
   List<Sale> _salesHistory = [];
@@ -20,6 +21,7 @@ class SalesProvider with ChangeNotifier {
   Future<int> addSale(Sale sale) async {
     final id = await DatabaseHelper.instance.createSale(sale);
     await fetchSalesHistory(); // Refresh history
+    SyncService.instance.updatePendingCount();
     return id;
   }
 }

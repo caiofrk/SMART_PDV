@@ -43,30 +43,15 @@ class CatalogScreen extends StatefulWidget {
 
 class _CatalogScreenState extends State<CatalogScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
-  List<Product> _products = [];
-  bool _isLoading = true;
+  late final Stream<List<Map<String, dynamic>>> _productsStream;
 
   @override
   void initState() {
     super.initState();
-    _fetchProducts();
-  }
-
-  Future<void> _fetchProducts() async {
-    try {
-      final response = await _supabase.from('products').select();
-      setState(() {
-        _products = (response as List).map((e) => Product.fromMap(e)).toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao carregar catálogo: $e')),
-        );
-      }
-    }
+    _productsStream = _supabase
+        .from('products')
+        .stream(primaryKey: ['id'])
+        .order('name', ascending: true);
   }
 
   @override
@@ -76,58 +61,137 @@ class _CatalogScreenState extends State<CatalogScreen> {
         title: const Text('Catálogo de Produtos'),
         centerTitle: true,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _products.isEmpty
-              ? const Center(child: Text('Nenhum produto encontrado.'))
-              : GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.75,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: _products.length,
-                  itemBuilder: (context, index) {
-                    final product = _products[index];
-                    return Card(
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _productsStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.cloud_off, size: 60, color: Colors.orange),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Erro ao carregar catálogo em tempo real: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final rawList = snapshot.data ?? [];
+          if (rawList.isEmpty) {
+            return const Center(
+              child: Text(
+                'Nenhum produto disponível no momento.',
+                style: TextStyle(fontSize: 16),
+              ),
+            );
+          }
+
+          final products = rawList.map((e) => Product.fromMap(e)).toList();
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.72,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              final inStock = product.stockQuantity > 0;
+
+              return Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        color: Colors.grey[900],
+                        child: product.imagePath != null && product.imagePath!.isNotEmpty
+                            ? Image.network(
+                                product.imagePath!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Icon(
+                                  Icons.image_not_supported,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                              )
+                            : const Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(10.0),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Container(
-                              color: Colors.grey[800],
-                              child: const Icon(Icons.image, size: 50), // Placeholder image
+                          if (product.category != null && product.category!.isNotEmpty)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                product.category!,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
+                          Text(
+                            product.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  product.name,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'R\$ ${product.price.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'R\$ ${product.price.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              ),
+                              Text(
+                                inStock ? 'Em estoque' : 'Esgotado',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: inStock ? Colors.greenAccent : Colors.redAccent,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

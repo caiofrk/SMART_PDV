@@ -28,7 +28,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -58,6 +58,11 @@ class DatabaseHelper {
         await db.insert('categories', {'name': cat});
       }
     }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE products ADD COLUMN last_updated TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN sync_status TEXT DEFAULT "pending"');
+      await db.execute('ALTER TABLE sales ADD COLUMN sync_status TEXT DEFAULT "pending"');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -69,7 +74,9 @@ class DatabaseHelper {
         price REAL NOT NULL,
         stockQuantity INTEGER NOT NULL,
         imagePath TEXT,
-        category TEXT
+        category TEXT,
+        last_updated TEXT,
+        sync_status TEXT DEFAULT 'pending'
       )
     ''');
 
@@ -99,7 +106,8 @@ class DatabaseHelper {
       CREATE TABLE sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         totalAmount REAL NOT NULL,
-        timestamp TEXT NOT NULL
+        timestamp TEXT NOT NULL,
+        sync_status TEXT DEFAULT 'pending'
       )
     ''');
 
@@ -139,7 +147,10 @@ class DatabaseHelper {
   // Product methods
   Future<int> insertProduct(Product product) async {
     final db = await instance.database;
-    return await db.insert('products', product.toMap());
+    final map = product.toMap();
+    map['last_updated'] = DateTime.now().toIso8601String();
+    map['sync_status'] = 'pending';
+    return await db.insert('products', map);
   }
 
   Future<List<Product>> getAllProducts() async {
@@ -165,9 +176,12 @@ class DatabaseHelper {
 
   Future<int> updateProduct(Product product) async {
     final db = await instance.database;
+    final map = product.toMap();
+    map['last_updated'] = DateTime.now().toIso8601String();
+    map['sync_status'] = 'pending';
     return await db.update(
       'products',
-      product.toMap(),
+      map,
       where: 'id = ?',
       whereArgs: [product.id],
     );
@@ -182,21 +196,88 @@ class DatabaseHelper {
   Future<int> createSale(Sale sale) async {
     final db = await instance.database;
     return await db.transaction((txn) async {
-      // 1. Insert Sale
-      final saleId = await txn.insert('sales', sale.toMap());
+      // 1. Insert Sale with pending sync status
+      final saleMap = sale.toMap();
+      saleMap['sync_status'] = 'pending';
+      final saleId = await txn.insert('sales', saleMap);
 
       // 2. Insert Sale Items and update stock
       for (var item in sale.items) {
         await txn.insert('sale_items', item.toMap(saleId));
 
-        // Update product stock
+        // Update product stock and mark as pending sync for cloud reflection
         await txn.execute(
-          'UPDATE products SET stockQuantity = stockQuantity - ? WHERE id = ?',
-          [item.quantity, item.productId],
+          'UPDATE products SET stockQuantity = stockQuantity - ?, last_updated = ?, sync_status = "pending" WHERE id = ?',
+          [item.quantity, DateTime.now().toIso8601String(), item.productId],
         );
       }
       return saleId;
     });
+  }
+
+  // Sync pipeline queries
+  Future<List<Map<String, dynamic>>> getPendingProducts() async {
+    final db = await instance.database;
+    return await db.query(
+      'products',
+      where: 'sync_status = ?',
+      whereArgs: ['pending'],
+    );
+  }
+
+  Future<void> markProductsSynced(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final db = await instance.database;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await db.execute(
+      'UPDATE products SET sync_status = "synced" WHERE id IN ($placeholders)',
+      ids,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingSales() async {
+    final db = await instance.database;
+    final salesResult = await db.query(
+      'sales',
+      where: 'sync_status = ?',
+      whereArgs: ['pending'],
+    );
+
+    List<Map<String, dynamic>> fullSales = [];
+    for (var sale in salesResult) {
+      final saleId = sale['id'] as int;
+      final items = await db.query(
+        'sale_items',
+        where: 'saleId = ?',
+        whereArgs: [saleId],
+      );
+      fullSales.add({
+        'sale': sale,
+        'items': items,
+      });
+    }
+    return fullSales;
+  }
+
+  Future<void> markSalesSynced(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final db = await instance.database;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await db.execute(
+      'UPDATE sales SET sync_status = "synced" WHERE id IN ($placeholders)',
+      ids,
+    );
+  }
+
+  Future<int> getPendingSyncCount() async {
+    final db = await instance.database;
+    final pendingProducts = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM products WHERE sync_status = "pending"'),
+    ) ?? 0;
+    final pendingSales = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM sales WHERE sync_status = "pending"'),
+    ) ?? 0;
+    return pendingProducts + pendingSales;
   }
 
   Future<List<Sale>> getSalesHistory() async {

@@ -80,8 +80,15 @@ class MyApp extends StatelessWidget {
         ),
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
-            // Temporarily bypassing login for debugging
-            return const HomeScreen();
+            if (auth.isLoading) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (auth.isAuthenticated) {
+              return const HomeScreen();
+            }
+            return const LoginScreen();
           },
         ),
       ),
