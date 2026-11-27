@@ -24,6 +24,11 @@ class _AddProductScreenState extends State<AddProductScreen>
   final _barcodeController = TextEditingController();
   final _priceController = TextEditingController();
   final _stockController = TextEditingController();
+  // New controllers for cost breakdown
+  final _costController = TextEditingController();
+  final _expensesController = TextEditingController();
+  final _taxesController = TextEditingController();
+  final _marginController = TextEditingController();
   String? _selectedCategory;
   int? _existingProductId;
 

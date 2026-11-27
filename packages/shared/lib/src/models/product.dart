@@ -2,7 +2,11 @@ class Product {
   final int? id;
   final String name;
   final String? barcode;
-  final double price;
+  final double price; // selling price
+  final double cost; // internal cost
+  final double expenses; // additional expenses
+  final double taxes; // taxes applied
+  final double margin; // desired profit margin
   final int stockQuantity;
   final String? imagePath;
   final String? category;
@@ -12,12 +16,31 @@ class Product {
     required this.name,
     this.barcode,
     required this.price,
+    required this.cost,
+    required this.expenses,
+    required this.taxes,
+    required this.margin,
     required this.stockQuantity,
     this.imagePath,
     this.category,
   });
 
   Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'barcode': barcode,
+      'price': price,
+      'stockQuantity': stockQuantity,
+      'imagePath': imagePath,
+      'category': category,
+      // new fields
+      'cost': cost,
+      'expenses': expenses,
+      'taxes': taxes,
+      'margin': margin,
+    };
+  }
     return {
       'id': id,
       'name': name,
